@@ -1227,10 +1227,14 @@ function filterAndRenderNotes() {
     });
   }
 
-  // Apply tag filters
+  // [NOT-26] Apply tag filters (case-insensitive)
   if (filterState.tags.length > 0) {
     filteredNotes = filteredNotes.filter(note =>
-      filterState.tags.some(tag => note.tags.includes(tag))
+      filterState.tags.some(filterTag =>
+        note.tags.some(noteTag =>
+          noteTag.toLowerCase() === filterTag.toLowerCase()
+        )
+      )
     );
   }
 
@@ -1502,17 +1506,26 @@ function createNoteCard(note, index = 0) {
       tagEl.className = 'note-tag';
       tagEl.textContent = tag;
 
-      // [NOT-26] Add click listener to filter by tag
+      // [NOT-26] Add click listener to toggle tag filter (case-insensitive)
       tagEl.addEventListener('click', (e) => {
         e.stopPropagation(); // Prevent card expansion
 
-        // Add tag to filter if not already present
-        if (!filterState.tags.includes(tag)) {
+        // Check if tag is already in filter (case-insensitive)
+        const existingTagIndex = filterState.tags.findIndex(
+          filterTag => filterTag.toLowerCase() === tag.toLowerCase()
+        );
+
+        if (existingTagIndex !== -1) {
+          // Remove tag if already in filter
+          filterState.tags.splice(existingTagIndex, 1);
+        } else {
+          // Add tag to filter if not present
           filterState.tags.push(tag);
-          filterAndRenderNotes();
-          renderActiveFilters();
-          saveFilterState();
         }
+
+        filterAndRenderNotes();
+        renderActiveFilters();
+        saveFilterState();
       });
 
       tagsContainer.appendChild(tagEl);
@@ -1530,7 +1543,25 @@ function createNoteCard(note, index = 0) {
     // Fallback to plain text if HTML is empty
     textFull.textContent = note.text;
   }
-  card.querySelector('.note-link').href = note.url;
+
+  // [NOT-26] Validate URL protocol before setting href (prevent XSS)
+  const noteLinkEl = card.querySelector('.note-link');
+  try {
+    const url = new URL(note.url.trim(), window.location.origin);
+    const protocol = url.protocol.toLowerCase();
+
+    if (protocol === 'http:' || protocol === 'https:') {
+      noteLinkEl.href = note.url.trim();
+    } else {
+      console.warn('⚠️  Blocked dangerous protocol in expanded view:', protocol, 'for URL:', note.url);
+      noteLinkEl.href = '#';
+      noteLinkEl.style.cursor = 'not-allowed';
+    }
+  } catch (e) {
+    console.warn('⚠️  Invalid URL in expanded view:', note.url);
+    noteLinkEl.href = '#';
+    noteLinkEl.style.cursor = 'not-allowed';
+  }
 
   // [NOT-26] Toggle expand/collapse only on header empty space click
   const cardHeader = card.querySelector('.note-card-header');

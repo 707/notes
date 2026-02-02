@@ -1038,13 +1038,13 @@ body {
   display: block;
 }
 
-/* [NOT-20] Link Styles - Subtle styling for preserved hyperlinks */
+/* [NOT-20] [NOT-26] Link Styles - Subtle styling for preserved hyperlinks */
 .text-preview a,
 .note-text-preview a,
 .note-text-full a {
   color: var(--color-primary);
   text-decoration: underline;
-  text-decoration-color: rgba(94, 106, 210, 0.3);
+  text-decoration-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
   transition: all var(--transition-fast);
