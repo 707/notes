@@ -1,37 +1,6 @@
 /* Knowledge Clipper - Panel Styles */
 /* Design System inspired by Linear.app */
-
-:root {
-  /* Spacing Scale */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 24px;
-  --spacing-2xl: 32px;
-
-  /* Typography Scale */
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-size-xs: 11px;
-  --font-size-sm: 12px;
-  --font-size-base: 13px;
-  --font-size-md: 14px;
-  --font-size-lg: 15px;
-  --font-size-xl: 18px;
-  --font-size-2xl: 20px;
-
-  /* Line Heights */
-  --line-height-tight: 1.25;
-  --line-height-base: 1.5;
-  --line-height-relaxed: 1.75;
-
-  /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-full: 9999px;
-}
+/* NOT-9: Design tokens now unified in styles.css */
 
 /* SVG Icon Styles */
 .icon {
@@ -108,7 +77,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--color-bg);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
@@ -116,6 +85,13 @@ body {
 }
 
 .menu-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* [NOT-16] Menu right container */
+.menu-right {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -130,7 +106,31 @@ body {
 .menu-title {
   font-size: var(--font-size-lg);
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-primary);
+}
+
+/* [NOT-16] Menu action button (Create Note) */
+.menu-action-button {
+  padding: var(--spacing-sm);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+}
+
+.menu-action-button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.menu-action-button:active {
+  transform: scale(0.95);
 }
 
 .menu-back {
@@ -142,17 +142,19 @@ body {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  /* [NOT-23] Use motion tokens */
+  transition: all var(--duration-micro) var(--ease-out-spring);
 }
 
 .menu-back:hover {
-  background: var(--color-bg-hover);
+  background: var(--color-surface-hover);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
 
+/* [NOT-23] Snappy scale on click */
 .menu-back:active {
-  transform: scale(0.98);
+  transform: scale(0.95);
 }
 
 /* Loading State */
@@ -188,7 +190,7 @@ body {
 }
 
 .skeleton-card {
-  background: var(--color-bg);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--spacing-md);
@@ -207,7 +209,7 @@ body {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: var(--color-bg-secondary);
+  background: var(--color-surface-secondary);
 }
 
 .skeleton-lines {
@@ -219,7 +221,7 @@ body {
 
 .skeleton-line {
   height: 12px;
-  background: var(--color-bg-secondary);
+  background: var(--color-surface-secondary);
   border-radius: var(--radius-sm);
   width: 100%;
 }
@@ -266,7 +268,7 @@ body {
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  background: var(--color-bg-secondary);
+  background: var(--color-surface-secondary);
   border-radius: var(--radius-md);
 }
 
@@ -285,12 +287,12 @@ body {
 .site-name {
   font-size: var(--font-size-base);
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 
 .url {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -312,11 +314,11 @@ body {
 
 .text-preview {
   padding: var(--spacing-md);
-  background: var(--color-bg-secondary);
+  background: var(--color-surface-secondary);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   line-height: 1.6;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   max-height: 120px;
   overflow: hidden;
   position: relative;
@@ -329,7 +331,7 @@ body {
   left: 0;
   right: 0;
   height: 40px;
-  background: linear-gradient(transparent, var(--color-bg-secondary));
+  background: linear-gradient(transparent, var(--color-surface-secondary));
 }
 
 .notes-input,
@@ -340,7 +342,7 @@ body {
   border-radius: var(--radius-md);
   font-family: var(--font-family);
   font-size: var(--font-size-base);
-  color: var(--color-text);
+  color: var(--color-text-primary);
   resize: vertical;
   transition: border-color var(--transition-fast);
 }
@@ -353,12 +355,12 @@ body {
 
 .notes-input::placeholder,
 .tags-input::placeholder {
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
 }
 
 .input-hint {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
   margin-top: var(--spacing-xs);
 }
 
@@ -377,15 +379,17 @@ body {
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
-  transition: all var(--transition-base);
+  /* [NOT-23] Use motion tokens */
+  transition: all var(--duration-micro) var(--ease-out-spring);
 }
 
 .save-button:hover {
   background: var(--color-primary-hover);
 }
 
+/* [NOT-23] Snappy scale on click */
 .save-button:active {
-  transform: scale(0.98);
+  transform: scale(0.95);
 }
 
 .save-button.success {
@@ -413,7 +417,7 @@ body {
 
 .library-header {
   padding: var(--spacing-lg);
-  background: var(--color-bg);
+  background: var(--color-surface);
 }
 
 /* Unified Filter Component */
@@ -424,10 +428,12 @@ body {
   position: relative;
 }
 
+/* [NOT-26] Filter input wrapper with expand button */
 .filter-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  gap: var(--spacing-sm);
 }
 
 .filter-icon {
@@ -451,7 +457,7 @@ body {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background-color: var(--color-text-muted);
+  background-color: var(--color-text-tertiary);
   animation: dot-pulse 1.4s infinite ease-in-out;
 }
 
@@ -474,8 +480,9 @@ body {
   }
 }
 
+/* [NOT-26] Filter input takes full width */
 .filter-input {
-  width: 100%;
+  flex: 1;
   padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 40px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -487,11 +494,36 @@ body {
 .filter-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+  box-shadow: var(--focus-ring);
 }
 
 .filter-input::placeholder {
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
+}
+
+/* [NOT-26] Expand All Button */
+.expand-all-button {
+  padding: var(--spacing-sm);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+}
+
+.expand-all-button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.expand-all-button:active {
+  transform: scale(0.95);
 }
 
 /* Filter Dropdown */
@@ -500,25 +532,15 @@ body {
   top: calc(100% + var(--spacing-xs));
   left: 0;
   right: 0;
-  background: var(--color-bg);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   max-height: 300px;
   overflow-y: auto;
   z-index: 50;
-  animation: slideDown 200ms ease;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  /* [NOT-23] Use standard enter-slide keyframe */
+  animation: enter-slide var(--duration-base) var(--ease-out-spring);
 }
 
 .filter-section {
@@ -534,7 +556,7 @@ body {
   padding: var(--spacing-xs) var(--spacing-md);
   font-size: var(--font-size-xs);
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -547,11 +569,11 @@ body {
   cursor: pointer;
   transition: all var(--transition-fast);
   font-size: var(--font-size-base);
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 
 .filter-option:hover {
-  background: var(--color-bg-hover);
+  background: var(--color-surface-hover);
 }
 
 .filter-option.active {
@@ -575,7 +597,7 @@ body {
 
 .active-filters-label {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
   font-weight: 600;
 }
 
@@ -596,34 +618,14 @@ body {
   border-radius: var(--radius-lg);
   font-size: var(--font-size-xs);
   font-weight: 500;
-  animation: chipFadeIn 200ms ease;
-  transition: all 150ms ease;
+  /* [NOT-23] Use standard enter-scale keyframe */
+  animation: enter-scale var(--duration-base) var(--ease-out-spring);
+  transition: all var(--duration-micro) var(--ease-out-spring);
 }
 
+/* [NOT-23] Use standard exit-scale keyframe */
 .filter-chip.removing {
-  animation: chipFadeOut 150ms ease forwards;
-}
-
-@keyframes chipFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes chipFadeOut {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.8);
-  }
+  animation: exit-scale var(--duration-base) var(--ease-out-spring) forwards;
 }
 
 .clear-all-button {
@@ -634,13 +636,19 @@ body {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 150ms ease;
+  /* [NOT-23] Use motion tokens */
+  transition: all var(--duration-micro) var(--ease-out-spring);
   font-weight: 500;
 }
 
 .clear-all-button:hover {
   background: var(--color-primary);
   color: white;
+}
+
+/* [NOT-23] Snappy scale on click */
+.clear-all-button:active {
+  transform: scale(0.95);
 }
 
 /* Screen Reader Only */
@@ -695,7 +703,7 @@ body {
   font-size: var(--font-size-lg);
   font-weight: 600;
   margin-bottom: var(--spacing-sm);
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 
 .empty-state p {
@@ -705,17 +713,32 @@ body {
 
 /* Note Card */
 .note-card {
-  background: var(--color-bg);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--spacing-md);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  /* [NOT-23] Use motion tokens */
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  /* [NOT-23] Staggered entrance animation */
+  animation: enter-slide var(--duration-base) var(--ease-out-spring) backwards;
 }
 
+/* [NOT-23] Exit animation for deletion */
+.note-card.removing {
+  animation: exit-scale var(--duration-base) var(--ease-out-spring) forwards;
+}
+
+/* [NOT-23] Lift on hover */
 .note-card:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+/* [NOT-23] Subtle scale on click */
+.note-card:active {
+  transform: scale(0.99);
 }
 
 .note-card-header {
@@ -723,14 +746,39 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--spacing-md);
+  gap: var(--spacing-sm);
 }
 
+/* [NOT-21] [NOT-26] Source container - horizontal layout with date inline */
 .note-source {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--spacing-sm);
   flex: 1;
   min-width: 0;
+}
+
+/* [NOT-21] Clickable source link (favicon + site name only) */
+.note-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-left: calc(-1 * var(--spacing-sm));
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+  width: fit-content;
+  transition: background var(--transition-fast);
+}
+
+.note-source-link:hover {
+  background: var(--color-surface-hover);
+}
+
+.note-source-link:hover .note-site-name {
+  color: var(--color-primary);
 }
 
 .note-favicon {
@@ -751,9 +799,122 @@ body {
   color: var(--color-text-secondary);
 }
 
+/* [NOT-26] Date appears inline next to source name */
 .note-date {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* [NOT-18] [NOT-26] Note Actions Container with button position management */
+.note-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+/* [NOT-26] When read-later is active, move it to far right (after delete) */
+.note-card .read-later-button.active {
+  order: 3;
+}
+
+.note-card .delete-button {
+  order: 2;
+}
+
+.note-card .edit-button {
+  order: 1;
+}
+
+/* [NOT-26] Hide delete button when read-later is active (unless card is hovered) */
+.note-card:not(:hover) .read-later-button.active ~ .delete-button {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* [NOT-19] Edit Button */
+.edit-button {
+  padding: var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  /* [NOT-23] Use motion tokens */
+  transition: opacity var(--duration-micro) var(--ease-out-spring),
+              background var(--duration-micro) var(--ease-out-spring),
+              color var(--duration-micro) var(--ease-out-spring),
+              transform var(--duration-micro) var(--ease-out-spring);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+.note-card:hover .edit-button {
+  opacity: 1;
+}
+
+.edit-button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+
+/* [NOT-23] Snappy scale on click */
+.edit-button:active {
+  transform: scale(0.95);
+}
+
+/* [NOT-18] Read Later Button */
+.read-later-button {
+  padding: var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  /* [NOT-23] Use motion tokens */
+  transition: opacity var(--duration-micro) var(--ease-out-spring),
+              background var(--duration-micro) var(--ease-out-spring),
+              color var(--duration-micro) var(--ease-out-spring),
+              transform var(--duration-micro) var(--ease-out-spring);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform; /* Performance hint for scale animation */
+}
+
+.note-card:hover .read-later-button {
+  opacity: 1;
+}
+
+.read-later-button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+
+/* [NOT-23] Snappy scale on click */
+.read-later-button:active {
+  transform: scale(0.95);
+}
+
+.read-later-button.active {
+  opacity: 1;
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.read-later-button.active:hover {
+  background: var(--color-primary-light);
+  transform: scale(1.1);
+}
+
+.read-later-button.active:active {
+  transform: scale(0.95);
 }
 
 .delete-button {
@@ -762,8 +923,17 @@ body {
   border: none;
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--transition-fast);
-  font-size: var(--font-size-base);
+  /* [NOT-23] Use motion tokens */
+  transition: opacity var(--duration-micro) var(--ease-out-spring),
+              background var(--duration-micro) var(--ease-out-spring),
+              color var(--duration-micro) var(--ease-out-spring),
+              transform var(--duration-micro) var(--ease-out-spring);
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform; /* Performance hint for scale animation */
 }
 
 .note-card:hover .delete-button {
@@ -771,13 +941,20 @@ body {
 }
 
 .delete-button:hover {
-  transform: scale(1.2);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  transform: scale(1.1);
+}
+
+/* [NOT-23] Snappy scale on click */
+.delete-button:active {
+  transform: scale(0.95);
 }
 
 .note-text-preview {
   font-size: var(--font-size-base);
   line-height: 1.6;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   margin-bottom: var(--spacing-md);
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -789,7 +966,7 @@ body {
   font-size: var(--font-size-sm);
   line-height: 1.5;
   color: var(--color-text-secondary);
-  background: var(--color-bg-secondary);
+  background: var(--color-surface-secondary);
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-sm);
   margin-bottom: var(--spacing-md);
@@ -805,12 +982,21 @@ body {
   flex-wrap: wrap;
 }
 
+/* [NOT-26] Tags are clickable for filtering */
 .note-tag {
   padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--color-bg-secondary);
+  background: var(--color-surface-secondary);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.note-tag:hover {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  transform: translateY(-1px);
 }
 
 .note-expanded-content {
@@ -822,7 +1008,7 @@ body {
 .note-text-full {
   font-size: var(--font-size-base);
   line-height: 1.6;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   margin-bottom: var(--spacing-md);
   white-space: pre-wrap;
 }
@@ -852,20 +1038,376 @@ body {
   display: block;
 }
 
-/* Fade-in Animation */
-.fade-in {
-  animation: fadeIn 150ms ease-out;
+/* [NOT-20] Link Styles - Subtle styling for preserved hyperlinks */
+.text-preview a,
+.note-text-preview a,
+.note-text-full a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: rgba(94, 106, 210, 0.3);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  transition: all var(--transition-fast);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.text-preview a:hover,
+.note-text-preview a:hover,
+.note-text-full a:hover {
+  color: var(--color-primary-hover);
+  text-decoration-color: var(--color-primary-hover);
+}
+
+/* [NOT-20] Smart Chips - Special styling for rich media links */
+.text-preview a.smart-chip,
+.note-text-preview a.smart-chip,
+.note-text-full a.smart-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  padding-left: calc(var(--spacing-sm) + 14px); /* Space for icon */
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.text-preview a.smart-chip:hover,
+.note-text-preview a.smart-chip:hover,
+.note-text-full a.smart-chip:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* YouTube Smart Chip */
+.text-preview a.smart-chip-youtube,
+.note-text-preview a.smart-chip-youtube,
+.note-text-full a.smart-chip-youtube {
+  background: var(--color-youtube-bg);
+  color: var(--color-youtube);
+  border-color: var(--color-youtube-border);
+}
+
+.text-preview a.smart-chip-youtube:hover,
+.note-text-preview a.smart-chip-youtube:hover,
+.note-text-full a.smart-chip-youtube:hover {
+  background: var(--color-youtube-border);
+  border-color: var(--color-youtube);
+}
+
+/* SVG icon using background-image for YouTube */
+.text-preview a.smart-chip-youtube::before,
+.note-text-preview a.smart-chip-youtube::before,
+.note-text-full a.smart-chip-youtube::before {
+  content: '';
+  position: absolute;
+  left: var(--spacing-sm);
+  width: 10px;
+  height: 10px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF0000"><path d="M8 5v14l11-7z"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Twitter/X Smart Chip */
+.text-preview a.smart-chip-twitter,
+.note-text-preview a.smart-chip-twitter,
+.note-text-full a.smart-chip-twitter {
+  background: var(--color-twitter-bg);
+  color: var(--color-twitter);
+  border-color: var(--color-twitter-border);
+}
+
+.text-preview a.smart-chip-twitter:hover,
+.note-text-preview a.smart-chip-twitter:hover,
+.note-text-full a.smart-chip-twitter:hover {
+  background: var(--color-twitter-border);
+  border-color: var(--color-twitter);
+}
+
+/* SVG icon using background-image for Twitter/X */
+.text-preview a.smart-chip-twitter::before,
+.note-text-preview a.smart-chip-twitter::before,
+.note-text-full a.smart-chip-twitter::before {
+  content: '';
+  position: absolute;
+  left: var(--spacing-sm);
+  width: 10px;
+  height: 10px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231DA1F2"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* [NOT-22] Pill-based Tag Input Component */
+.tag-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  min-height: 40px;
+  cursor: text;
+  transition: border-color var(--transition-fast);
+  position: relative;
+}
+
+.tag-input-container:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  /* [NOT-23] Use standard enter-scale keyframe */
+  animation: enter-scale var(--duration-base) var(--ease-out-spring);
+}
+
+.tag-pill-remove {
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity var(--transition-fast);
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  font-size: var(--font-size-sm);
+}
+
+.tag-pill-remove:hover {
+  opacity: 1;
+}
+
+.tag-input-field {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  min-width: 120px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.tag-input-field::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.tag-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-xs));
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  /* [NOT-23] Use standard enter-slide keyframe */
+  animation: enter-slide var(--duration-base) var(--ease-out-spring);
+}
+
+.tag-dropdown-option {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.tag-dropdown-option:hover,
+.tag-dropdown-option.selected {
+  background: var(--color-surface-hover);
+}
+
+.tag-dropdown-option.create {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.tag-dropdown-icon {
+  display: inline-block;
+  margin-right: var(--spacing-xs);
+  opacity: 0.7;
+}
+
+/* [NOT-22] Tag Suggestions (Recent Tags) */
+.tag-suggestions {
+  margin-top: var(--spacing-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.tag-suggestions-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tag-suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tag-suggestion-chip:hover {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-light);
+  transform: translateY(-1px);
+}
+
+.tag-suggestion-chip:active {
+  transform: translateY(0);
+}
+
+.tag-suggestion-icon {
+  opacity: 0.5;
+  font-size: var(--font-size-xs);
+}
+
+/* [NOT-19] Note Edit Form */
+.note-edit-form {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.note-card.editing {
+  border-color: var(--color-primary);
+  background: var(--color-surface-accent);
+}
+
+.edit-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.edit-textarea,
+.edit-tags-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  resize: vertical;
+  transition: border-color var(--transition-fast);
+}
+
+.edit-textarea:focus,
+.edit-tags-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.edit-textarea::placeholder,
+.edit-tags-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.edit-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.edit-save-button,
+.edit-cancel-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  /* [NOT-23] Use motion tokens */
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  border: none;
+}
+
+.edit-save-button {
+  background: var(--color-primary);
+  color: white;
+}
+
+.edit-save-button:hover {
+  background: var(--color-primary-hover);
+}
+
+/* [NOT-23] Snappy scale on click */
+.edit-save-button:active {
+  transform: scale(0.95);
+}
+
+.edit-save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.edit-cancel-button {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.edit-cancel-button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-medium);
+}
+
+/* [NOT-23] Snappy scale on click */
+.edit-cancel-button:active {
+  transform: scale(0.95);
+}
+
+.edit-cancel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Focus States for Accessibility */
