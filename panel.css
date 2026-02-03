@@ -61,10 +61,12 @@ body {
   overflow-x: hidden;
 }
 
+/* [NOT-34] Fixed height container to prevent page scroll */
 #app {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .hidden {
@@ -95,6 +97,52 @@ body {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+}
+
+/* [NOT-31] Contextual Recall Pill */
+.context-pill {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  user-select: none;
+}
+
+.context-pill:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  transform: translateX(-50%) scale(1.05);
+}
+
+.context-pill:active {
+  transform: translateX(-50%) scale(0.98);
+}
+
+/* [NOT-31] Animation plays only once on first appearance */
+.context-pill.animate {
+  animation: enter-slide var(--duration-slow) var(--ease-out-spring);
+}
+
+/* [NOT-31] Active state when filter is applied */
+.context-pill.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.context-pill.active:hover {
+  background: var(--color-primary-hover);
 }
 
 .menu-logo {
@@ -131,6 +179,18 @@ body {
 
 .menu-action-button:active {
   transform: scale(0.95);
+}
+
+/* [NOT-34] Active state for navigation buttons */
+.menu-action-button.active {
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-light);
+}
+
+.menu-action-button.active:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
 }
 
 .menu-back {
@@ -409,15 +469,20 @@ body {
 }
 
 /* Library Mode */
+/* [NOT-34] Container for library view (no scroll, children handle it) */
 .library-mode {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  flex: 1;
+  overflow: hidden;
 }
 
+/* [NOT-34] Fixed filter bar at top (flex layout keeps it in place) */
 .library-header {
-  padding: var(--spacing-lg);
+  flex-shrink: 0;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
   background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* Unified Filter Component */
@@ -675,13 +740,33 @@ body {
 }
 
 /* Notes List */
+/* [NOT-34] Scrollable container for notes */
 .notes-list {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-lg);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+}
+
+/* [NOT-34] Custom scrollbar on notes-list */
+.notes-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notes-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notes-list::-webkit-scrollbar-thumb {
+  background: var(--color-border-medium);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-surface);
+}
+
+.notes-list::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
 }
 
 .empty-state {
@@ -711,6 +796,16 @@ body {
   max-width: 300px;
 }
 
+/* [NOT-34] Placeholder Views (AI Chat, Settings) */
+.placeholder-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: var(--spacing-xl);
+  min-height: 400px;
+}
+
 /* Note Card */
 .note-card {
   background: var(--color-surface);
@@ -729,16 +824,51 @@ body {
   animation: exit-scale var(--duration-base) var(--ease-out-spring) forwards;
 }
 
-/* [NOT-23] Lift on hover */
+/* [NOT-23] [NOT-24] Smooth border highlight on hover (no bounce) */
 .note-card:hover {
   border-color: var(--color-primary);
   box-shadow: var(--shadow-sm);
-  transform: translateY(-2px);
 }
 
 /* [NOT-23] Subtle scale on click */
 .note-card:active {
   transform: scale(0.99);
+}
+
+/* [NOT-29] Media Object Layout: thumbnail on left, content on right */
+.note-card-body {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+/* [NOT-29] Image Thumbnail Container */
+.note-thumbnail {
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface-secondary);
+  cursor: pointer;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+}
+
+.note-thumbnail:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+}
+
+.note-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* [NOT-29] Content wrapper takes remaining space */
+.note-content {
+  flex: 1;
+  min-width: 0; /* Allows text to wrap properly in flex container */
 }
 
 .note-card-header {
@@ -870,6 +1000,56 @@ body {
 
 /* [NOT-23] Snappy scale on click */
 .edit-button:active {
+  transform: scale(0.95);
+}
+
+/* [NOT-25] Star Button */
+.star-button {
+  padding: var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  /* [NOT-23] Use motion tokens */
+  transition: opacity var(--duration-micro) var(--ease-out-spring),
+              background var(--duration-micro) var(--ease-out-spring),
+              color var(--duration-micro) var(--ease-out-spring),
+              transform var(--duration-micro) var(--ease-out-spring);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform; /* Performance hint for scale animation */
+}
+
+.note-card:hover .star-button {
+  opacity: 1;
+}
+
+.star-button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+
+/* [NOT-23] Snappy scale on click */
+.star-button:active {
+  transform: scale(0.95);
+}
+
+.star-button.active {
+  opacity: 1;
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.star-button.active:hover {
+  background: var(--color-primary-light);
+  transform: scale(1.1);
+}
+
+.star-button.active:active {
   transform: scale(0.95);
 }
 
@@ -1416,6 +1596,217 @@ body {
   cursor: not-allowed;
 }
 
+/* [NOT-33] Add Image Controls */
+.add-image-controls {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.add-image-button {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  transition: all var(--duration-micro) var(--ease-out-spring);
+}
+
+.add-image-button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.add-image-button:active {
+  transform: scale(0.95);
+}
+
+.add-image-button.active {
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* [NOT-33] Image Preview List */
+.image-preview-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-sm);
+}
+
+.image-preview-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: all var(--duration-micro) var(--ease-out-spring);
+}
+
+.image-preview-item:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+  z-index: 1;
+}
+
+.image-preview-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+}
+
+.image-preview-delete {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-item:hover .image-preview-delete {
+  opacity: 1;
+}
+
+.image-preview-delete:hover {
+  background: var(--color-error);
+  transform: scale(1.1);
+}
+
+.image-preview-delete:active {
+  transform: scale(0.95);
+}
+
+/* [NOT-33] Image Count Badge on Thumbnails */
+.image-count-badge {
+  position: absolute;
+  bottom: var(--spacing-xs);
+  right: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+  pointer-events: none; /* Don't interfere with thumbnail click */
+  transform-origin: center;
+  /* Counter parent scale to keep badge static */
+  transition: none;
+}
+
+/* Keep badge size fixed when thumbnail scales */
+.note-thumbnail:hover .image-count-badge {
+  transform: scale(0.952); /* Inverse of 1.05 parent scale */
+}
+
+/* [NOT-33] Edit Mode Image Gallery (in thumbnail area) */
+.note-thumbnail.edit-mode-gallery {
+  width: 100%;
+  max-width: none;
+  display: flex;
+  gap: var(--spacing-sm);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--spacing-xs);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+}
+
+.note-thumbnail.edit-mode-gallery::-webkit-scrollbar {
+  height: 6px;
+}
+
+.note-thumbnail.edit-mode-gallery::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.note-thumbnail.edit-mode-gallery::-webkit-scrollbar-thumb {
+  background: var(--color-border-medium);
+  border-radius: var(--radius-full);
+}
+
+.edit-gallery-item {
+  position: relative;
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  cursor: pointer;
+}
+
+.edit-gallery-item:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+  z-index: 1;
+}
+
+.edit-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.edit-gallery-delete {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-gallery-item:hover .edit-gallery-delete {
+  opacity: 1;
+}
+
+.edit-gallery-delete:hover {
+  background: var(--color-error);
+  transform: scale(1.1);
+}
+
+.edit-gallery-delete:active {
+  transform: scale(0.95);
+}
+
 /* Focus States for Accessibility */
 button:focus-visible,
 input:focus-visible,
@@ -1428,4 +1819,196 @@ input:focus-visible,
 .filter-chip:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+}
+
+/* [NOT-29] Image Lightbox Modal */
+.lightbox-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: enter-scale var(--duration-base) var(--ease-out-spring);
+}
+
+.lightbox-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  cursor: pointer;
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  z-index: 1001;
+}
+
+.lightbox-image {
+  max-width: 100%;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  backdrop-filter: blur(10px);
+}
+
+.lightbox-close:hover {
+  background: white;
+  transform: scale(1.1);
+}
+
+.lightbox-close:active {
+  transform: scale(0.95);
+}
+
+/* [NOT-33] Lightbox Delete Button (left of download) */
+.lightbox-delete {
+  position: absolute;
+  bottom: var(--spacing-md);
+  right: calc(var(--spacing-md) + 56px); /* Position left of download button */
+  padding: var(--spacing-md);
+  background: var(--color-error);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  box-shadow: var(--shadow-md);
+  z-index: 1002;
+}
+
+.lightbox-delete:hover {
+  background: #E03E3E; /* Darker red on hover */
+  transform: scale(1.1);
+}
+
+.lightbox-delete:active {
+  transform: scale(0.95);
+}
+
+.lightbox-delete.hidden {
+  display: none;
+}
+
+.lightbox-download {
+  position: absolute;
+  bottom: var(--spacing-md);
+  right: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  box-shadow: var(--shadow-md);
+  z-index: 1002;
+}
+
+.lightbox-download:hover {
+  background: var(--color-primary-hover);
+  transform: scale(1.1);
+}
+
+.lightbox-download:active {
+  transform: scale(0.95);
+}
+
+/* [NOT-33] Lightbox Navigation Arrows */
+.lightbox-prev,
+.lightbox-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: var(--spacing-md);
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  backdrop-filter: blur(10px);
+  z-index: 1002;
+}
+
+.lightbox-prev {
+  left: var(--spacing-lg);
+}
+
+.lightbox-next {
+  right: var(--spacing-lg);
+}
+
+.lightbox-prev:hover,
+.lightbox-next:hover {
+  background: white;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.lightbox-prev:active,
+.lightbox-next:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.lightbox-prev:disabled,
+.lightbox-next:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.lightbox-prev:disabled:hover,
+.lightbox-next:disabled:hover {
+  transform: translateY(-50%);
+}
+
+/* [NOT-33] Lightbox Image Counter */
+.lightbox-counter {
+  position: absolute;
+  top: var(--spacing-md);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  z-index: 1002;
 }

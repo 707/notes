@@ -24,6 +24,13 @@ chrome.runtime.onInstalled.addListener(async () => {
     contexts: ['page']
   });
 
+  // [NOT-29] Create context menu item for capturing images
+  chrome.contextMenus.create({
+    id: 'capture-image',
+    title: 'Capture Image',
+    contexts: ['image']
+  });
+
   console.log('✅ Context menu created');
 });
 
@@ -110,6 +117,47 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
     } catch (error) {
       console.error('❌ Error capturing webpage:', error);
+    }
+  }
+
+  // [NOT-29] Handle image capture
+  if (info.menuItemId === 'capture-image') {
+    console.log('🖼️  Capture image triggered');
+    console.log('Image URL:', info.srcUrl);
+
+    try {
+      // IMPORTANT: Open panel FIRST while we still have user gesture context
+      await chrome.sidePanel.open({ windowId: tab.windowId });
+      console.log('📂 Side panel opened');
+
+      // Fetch image as Base64 for offline persistence
+      const imageData = await fetchImageAsBase64(info.srcUrl);
+      console.log('📸 Image fetched as Base64, size:', imageData.length);
+
+      // Extract page metadata
+      const metadataResults = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: extractPageMetadata
+      });
+
+      const metadata = metadataResults[0].result;
+      console.log('📊 Extracted metadata:', metadata);
+
+      // Prepare clip data for image
+      const clipData = {
+        type: 'image',
+        imageData: imageData,
+        url: info.pageUrl,
+        metadata: metadata,
+        timestamp: Date.now()
+      };
+
+      // Save to storage as pending clip
+      await chrome.storage.local.set({ pendingClipData: clipData });
+      console.log('💾 Saved image to storage');
+
+    } catch (error) {
+      console.error('❌ Error capturing image:', error);
     }
   }
 });
@@ -246,3 +294,44 @@ function captureSelectionHtml() {
 }
 
 // [NOT-27] extractPageMetadata moved to utils.js for shared use
+
+/**
+ * [NOT-29] Fetch an image and convert it to Base64 for offline persistence
+ * Uses fetch() to get the image data and converts it to a data URL
+ *
+ * @param {string} imageUrl - The URL of the image to fetch
+ * @returns {Promise<string>} - Base64 data URL of the image
+ */
+async function fetchImageAsBase64(imageUrl) {
+  try {
+    // Fetch the image
+    const response = await fetch(imageUrl);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+
+    // Get image as blob
+    const blob = await response.blob();
+
+    // Convert blob to Base64 using FileReader
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        // reader.result contains the data URL (Base64)
+        resolve(reader.result);
+      };
+
+      reader.onerror = () => {
+        reject(new Error('Failed to convert image to Base64'));
+      };
+
+      reader.readAsDataURL(blob);
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching image as Base64:', error);
+    throw error;
+  }
+}

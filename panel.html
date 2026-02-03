@@ -72,22 +72,85 @@
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
       </symbol>
+      <!-- [NOT-25] Star Icon -->
+      <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </symbol>
+      <!-- [NOT-29] Download Icon -->
+      <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </symbol>
+      <!-- [NOT-33] Chevron Icons for Lightbox Navigation -->
+      <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </symbol>
+      <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </symbol>
+      <!-- [NOT-33] Upload Icon -->
+      <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </symbol>
+      <!-- [NOT-33] Image Icon -->
+      <symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+      </symbol>
+      <!-- [NOT-34] Grid Icon (Library) -->
+      <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+      </symbol>
+      <!-- [NOT-34] Sparkle Icon (AI) -->
+      <symbol id="icon-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"></path>
+      </symbol>
+      <!-- [NOT-34] Settings Icon (Gear) -->
+      <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+      </symbol>
     </svg>
   </div>
 
   <div id="app">
     <!-- Menu Bar -->
     <nav class="menu-bar">
+      <!-- [NOT-34] Left Navigation: Create + Library -->
       <div class="menu-left">
-        <img src="icons/icon32.png" alt="" class="menu-logo">
-        <span class="menu-title">Knowledge Clipper</span>
-      </div>
-      <div class="menu-right">
-        <button id="create-note-button" class="menu-action-button hidden" title="Create Note" aria-label="Create a new note">
+        <button id="create-note-button" class="menu-action-button" title="Create a new note" aria-label="Create a new note">
           <svg class="icon icon-sm"><use href="#icon-plus"></use></svg>
         </button>
+        <button id="library-button" class="menu-action-button" title="View your note library" aria-label="View your note library">
+          <svg class="icon icon-sm"><use href="#icon-grid"></use></svg>
+        </button>
       </div>
-      <button id="back-button" class="menu-back hidden" title="Back to Library">
+
+      <!-- [NOT-31] Contextual Recall Pill - shown when user has notes for current page -->
+      <div id="context-pill" class="context-pill hidden" role="button" tabindex="0" aria-label="Filter notes for current page">
+        <svg class="icon icon-md"><use href="#icon-file-text"></use></svg>
+        <span class="pill-text"></span>
+      </div>
+
+      <!-- [NOT-34] Right Navigation: AI + Settings -->
+      <div class="menu-right">
+        <button id="ai-button" class="menu-action-button" title="Open AI assistant" aria-label="Open AI assistant">
+          <svg class="icon icon-sm"><use href="#icon-sparkle"></use></svg>
+        </button>
+        <button id="settings-button" class="menu-action-button" title="Open settings" aria-label="Open settings">
+          <svg class="icon icon-sm"><use href="#icon-settings"></use></svg>
+        </button>
+      </div>
+
+      <!-- Back button (shown in capture mode) -->
+      <button id="back-button" class="menu-back hidden" title="Go back" aria-label="Go back to previous view">
         <svg class="icon icon-sm"><use href="#icon-arrow-left"></use></svg>
         <span>Back</span>
       </button>
@@ -166,6 +229,28 @@
         <div class="input-hint">Press Cmd+Enter to save</div>
       </div>
 
+      <!-- [NOT-33] Image Management Section -->
+      <div class="input-section">
+        <label class="section-label">Images</label>
+        <!-- [NOT-33] Hidden file input for uploads -->
+        <input type="file" id="image-upload-input" accept="image/*" multiple class="hidden" aria-label="Upload images">
+
+        <!-- [NOT-33] Add Image Controls -->
+        <div class="add-image-controls">
+          <button id="upload-image-button" class="add-image-button" type="button" title="Upload images from device">
+            <svg class="icon icon-sm"><use href="#icon-upload"></use></svg>
+            <span>Upload</span>
+          </button>
+          <button id="capture-webpage-image-button" class="add-image-button" type="button" title="Capture image from webpage">
+            <svg class="icon icon-sm"><use href="#icon-image"></use></svg>
+            <span>Capture from Webpage</span>
+          </button>
+        </div>
+
+        <!-- [NOT-33] Image Preview List (thumbnails) -->
+        <div id="capture-image-preview-list" class="image-preview-list hidden"></div>
+      </div>
+
       <button id="save-button" class="save-button">
         <span class="button-text">Save Clip</span>
         <svg class="button-icon icon icon-sm"><use href="#icon-arrow-right"></use></svg>
@@ -215,6 +300,10 @@
 
             <div class="filter-section">
               <div class="filter-section-label">Filter By</div>
+              <div class="filter-option" data-type="starred" data-value="true" role="menuitem" tabindex="0">
+                <span class="filter-option-icon">⭐</span>
+                Starred
+              </div>
               <div class="filter-option" data-type="readLater" data-value="true" role="menuitem" tabindex="0">
                 <span class="filter-option-icon">🕐</span>
                 Read Later
@@ -264,6 +353,28 @@
         <!-- Notes will be rendered here -->
       </div>
     </div>
+
+    <!-- [NOT-34] AI Chat Mode (Placeholder) -->
+    <div id="ai-chat-mode" class="placeholder-view hidden">
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg class="icon icon-xxl"><use href="#icon-sparkle"></use></svg>
+        </div>
+        <h2>AI Assistant</h2>
+        <p>Coming soon...</p>
+      </div>
+    </div>
+
+    <!-- [NOT-34] Settings Mode (Placeholder) -->
+    <div id="settings-mode" class="placeholder-view hidden">
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg class="icon icon-xxl"><use href="#icon-settings"></use></svg>
+        </div>
+        <h2>Settings</h2>
+        <p>Coming soon...</p>
+      </div>
+    </div>
   </div>
 
   <!-- Hidden template for note cards -->
@@ -281,6 +392,10 @@
           <button class="edit-button" title="Edit note" aria-label="Edit note">
             <svg class="icon icon-sm"><use href="#icon-edit"></use></svg>
           </button>
+          <!-- [NOT-25] Star button -->
+          <button class="star-button" title="Star note" aria-label="Star note">
+            <svg class="icon icon-sm"><use href="#icon-star"></use></svg>
+          </button>
           <button class="read-later-button" title="Mark as read later" aria-label="Mark as read later">
             <svg class="icon icon-sm"><use href="#icon-clock"></use></svg>
           </button>
@@ -290,23 +405,59 @@
         </div>
       </div>
 
-      <div class="note-text-preview"></div>
+      <!-- [NOT-29] Media object layout: thumbnail on left, content on right -->
+      <div class="note-card-body">
+        <!-- [NOT-29] Image thumbnail (hidden by default, shown for image notes) -->
+        <div class="note-thumbnail hidden">
+          <img src="" alt="Note thumbnail">
+        </div>
 
-      <div class="note-user-note"></div>
+        <!-- Content wrapper for text/notes/tags -->
+        <div class="note-content">
+          <div class="note-text-preview"></div>
 
-      <div class="note-tags"></div>
+          <div class="note-user-note"></div>
 
-      <div class="note-expanded-content hidden">
-        <div class="note-text-full"></div>
-        <div class="note-metadata">
-          <a class="note-link" href="" target="_blank">
-            <svg class="icon icon-xs"><use href="#icon-link"></use></svg>
-            <span>View Source</span>
-          </a>
+          <div class="note-tags"></div>
+
+          <div class="note-expanded-content hidden">
+            <div class="note-text-full"></div>
+            <div class="note-metadata">
+              <a class="note-link" href="" target="_blank">
+                <svg class="icon icon-xs"><use href="#icon-link"></use></svg>
+                <span>View Source</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </template>
+
+  <!-- [NOT-29] [NOT-33] Image Lightbox Modal with Navigation -->
+  <div id="lightbox-modal" class="lightbox-modal hidden">
+    <div class="lightbox-backdrop"></div>
+    <div class="lightbox-content">
+      <button class="lightbox-close" title="Close" aria-label="Close lightbox">
+        <svg class="icon icon-md"><use href="#icon-x"></use></svg>
+      </button>
+      <!-- [NOT-33] Navigation Arrows -->
+      <button class="lightbox-prev hidden" title="Previous image" aria-label="Previous image">
+        <svg class="icon icon-md"><use href="#icon-chevron-left"></use></svg>
+      </button>
+      <button class="lightbox-next hidden" title="Next image" aria-label="Next image">
+        <svg class="icon icon-md"><use href="#icon-chevron-right"></use></svg>
+      </button>
+      <img class="lightbox-image" src="" alt="Full size image">
+      <!-- [NOT-33] Image Counter -->
+      <div class="lightbox-counter hidden">
+        <span class="lightbox-counter-current">1</span> / <span class="lightbox-counter-total">1</span>
+      </div>
+      <button class="lightbox-download" title="Download image" aria-label="Download image">
+        <svg class="icon icon-sm"><use href="#icon-download"></use></svg>
+      </button>
+    </div>
+  </div>
 
   <script src="dexie.js"></script>
   <script src="database.js"></script>

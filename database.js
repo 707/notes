@@ -10,6 +10,54 @@ db.version(1).stores({
   metadata: 'key' // Store app metadata (migration flag, filter state, etc.)
 });
 
+// [NOT-18] Version 2: Add readLater index for efficient filtering
+db.version(2).stores({
+  notes: 'id, timestamp, *tags, readLater', // Added readLater index
+  metadata: 'key'
+});
+
+// [NOT-25] Version 3: Add starred index for efficient filtering
+db.version(3).stores({
+  notes: 'id, timestamp, *tags, readLater, starred', // Added starred index
+  metadata: 'key'
+});
+
+// [NOT-33] Version 4: Multi-image support (no new indexes, just schema structure change)
+db.version(4).stores({
+  notes: 'id, timestamp, *tags, readLater, starred', // No index changes
+  metadata: 'key'
+}).upgrade(async (tx) => {
+  // [NOT-33] Migrate imageData (single string) to images (array of objects)
+  console.log('🔄 [NOT-33] Migrating imageData to images array...');
+
+  const notes = await tx.table('notes').toArray();
+  let migratedCount = 0;
+
+  for (const note of notes) {
+    if (note.imageData && typeof note.imageData === 'string') {
+      // Convert single imageData to images array
+      note.images = [{
+        id: crypto.randomUUID(),
+        data: note.imageData,
+        timestamp: note.timestamp || Date.now()
+      }];
+
+      // Remove old imageData field
+      delete note.imageData;
+
+      // Update the note
+      await tx.table('notes').put(note);
+      migratedCount++;
+    } else if (!note.images) {
+      // Initialize empty images array for notes without images
+      note.images = [];
+      await tx.table('notes').put(note);
+    }
+  }
+
+  console.log(`✅ [NOT-33] Migrated ${migratedCount} notes with images`);
+});
+
 console.log('✅ Database schema defined');
 
 /**
