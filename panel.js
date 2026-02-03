@@ -693,17 +693,60 @@ async function saveFilterState() {
 }
 
 /**
- * [NOT-16] Handle create note button click
- * Opens capture mode for manual note entry
+ * [NOT-16] [NOT-27] Handle create note button click
+ * Attempts to capture current page metadata, falls back to blank note for restricted pages
  */
-function handleCreateNote() {
-  console.log('➕ Creating manual note...');
+async function handleCreateNote() {
+  console.log('➕ Creating note from current page...');
 
-  // Clear any pending clip data
-  chrome.storage.local.remove('pendingClipData');
+  try {
+    // Get the active tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  // Render capture mode with empty data
-  renderCaptureMode({});
+    if (!tab) {
+      console.warn('⚠️  No active tab found, creating blank note');
+      await chrome.storage.local.remove('pendingClipData');
+      renderCaptureMode({});
+      return;
+    }
+
+    // Check if URL is valid for script injection (http/https only)
+    const url = tab.url;
+    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+      console.warn('⚠️  Restricted page (chrome://, etc.), creating blank note');
+      await chrome.storage.local.remove('pendingClipData');
+      renderCaptureMode({});
+      return;
+    }
+
+    // Extract page metadata
+    console.log('📊 Extracting page metadata from:', url);
+    const metadataResults = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: extractPageMetadata
+    });
+
+    const metadata = metadataResults[0].result;
+    console.log('✅ Metadata extracted:', metadata);
+
+    // Prepare clip data (bookmark mode - no text/html)
+    const clipData = {
+      html: '',
+      text: '',
+      url: url,
+      metadata: metadata,
+      timestamp: Date.now()
+    };
+
+    // Render capture mode with page data
+    renderCaptureMode(clipData);
+
+  } catch (error) {
+    console.error('❌ Error capturing page:', error);
+    // Fallback to blank note on error
+    await chrome.storage.local.remove('pendingClipData');
+    renderCaptureMode({});
+  }
 }
 
 // Initialize on DOM load
@@ -803,35 +846,67 @@ async function renderCaptureMode(clipData = {}) {
   if (createButton) createButton.classList.add('hidden');
   if (expandButton) expandButton.classList.add('hidden');
 
-  // [NOT-16] Hide or show source bar based on whether this is a manual note
+  // [NOT-16] [NOT-27] Hide or show source bar based on content type
   const sourceBar = document.querySelector('.source-bar');
   const textPreviewSection = document.querySelector('.preview-section');
+  const previewLabel = textPreviewSection.querySelector('.section-label');
 
   if (clipData.url && clipData.metadata) {
-    // Web clip mode - show source info
+    // Has URL and metadata - show source info
     sourceBar.style.display = '';
     textPreviewSection.style.display = '';
 
     document.getElementById('capture-favicon').src = clipData.metadata.favicon;
     document.getElementById('capture-site-name').textContent = clipData.metadata.siteName;
     document.getElementById('capture-url').textContent = clipData.url;
+
+    // [NOT-27] Check if this is a bookmark (no text/html) or text selection
+    if (!clipData.text && !clipData.html) {
+      // Bookmark mode - show page title with badge
+      previewLabel.textContent = 'Capture Source';
+      const textPreview = document.getElementById('capture-text-preview');
+      textPreview.innerHTML = '';
+
+      // Create title with webpage badge
+      const titleContainer = document.createElement('div');
+      titleContainer.style.display = 'flex';
+      titleContainer.style.alignItems = 'center';
+      titleContainer.style.gap = '8px';
+
+      const titleText = document.createElement('span');
+      titleText.textContent = clipData.metadata.title;
+      titleText.style.fontSize = 'var(--font-size-base)';
+      titleText.style.fontWeight = '600';
+
+      const badge = document.createElement('span');
+      badge.textContent = 'Webpage';
+      badge.style.padding = '2px 8px';
+      badge.style.background = 'var(--color-primary-subtle)';
+      badge.style.color = 'var(--color-primary)';
+      badge.style.borderRadius = 'var(--radius-full)';
+      badge.style.fontSize = 'var(--font-size-xs)';
+      badge.style.fontWeight = '500';
+
+      titleContainer.appendChild(titleText);
+      titleContainer.appendChild(badge);
+      textPreview.appendChild(titleContainer);
+    } else {
+      // Text selection mode - show selected text
+      previewLabel.textContent = 'Selected Text';
+      const textPreview = document.getElementById('capture-text-preview');
+      let safeHtml = sanitizeHtml(clipData.html || clipData.text);
+      safeHtml = enhanceRichMedia(safeHtml);
+      if (safeHtml) {
+        textPreview.innerHTML = safeHtml;
+      } else {
+        // Fallback to plain text if HTML is empty
+        textPreview.textContent = clipData.text;
+      }
+    }
   } else {
     // Manual note mode - hide source and preview
     sourceBar.style.display = 'none';
     textPreviewSection.style.display = 'none';
-  }
-
-  // [NOT-20] [NOT-16] Populate text preview with sanitized HTML and smart chips (only for web clips)
-  if (clipData.text || clipData.html) {
-    const textPreview = document.getElementById('capture-text-preview');
-    let safeHtml = sanitizeHtml(clipData.html || clipData.text);
-    safeHtml = enhanceRichMedia(safeHtml);
-    if (safeHtml) {
-      textPreview.innerHTML = safeHtml;
-    } else {
-      // Fallback to plain text if HTML is empty
-      textPreview.textContent = clipData.text;
-    }
   }
 
   // [NOT-16] Clear and auto-focus notes textarea
@@ -877,22 +952,29 @@ async function handleSaveClip(clipData = {}) {
     // [NOT-22] Get tags from TagInput component
     const tags = captureTagInput ? captureTagInput.getTags() : [];
 
-    // [NOT-16] Validate that manual notes have at least some content
-    const isManualNote = !clipData.text && !clipData.html;
+    // [NOT-16] [NOT-27] Distinguish between manual notes and bookmarks
+    // Manual note: No URL, no text/html (completely blank)
+    // Bookmark: Has URL but no text/html
+    // Text capture: Has URL and text/html
+    const isManualNote = !clipData.url && !clipData.text && !clipData.html;
+    const isBookmark = clipData.url && !clipData.text && !clipData.html;
+
+    // Validate that manual notes have at least some content
     if (isManualNote && !userNote.trim()) {
       alert('Please add some content to your note before saving.');
       saveButton.disabled = false;
       return;
     }
 
-    // [NOT-20] [NOT-16] Create note object with both HTML and plain text
-    // For manual notes, use userNote as the main content (text field) and leave userNote empty
-    // to avoid duplicate display in the UI
+    // [NOT-20] [NOT-16] [NOT-27] Create note object
+    // Manual note: userNote becomes the main text
+    // Bookmark: metadata title becomes the main text, userNote is the user's comment
+    // Text capture: clipData.text is the main text, userNote is the user's comment
     const note = {
       id: crypto.randomUUID(),
       html: clipData.html || '',
-      text: isManualNote ? userNote : clipData.text, // For manual notes, userNote becomes the main text
-      userNote: isManualNote ? '' : userNote, // For manual notes, don't duplicate in userNote field
+      text: isManualNote ? userNote : (isBookmark ? clipData.metadata.title : clipData.text),
+      userNote: isManualNote ? '' : userNote, // For manual notes, don't duplicate
       tags: tags,
       url: clipData.url || '',
       metadata: clipData.metadata || {

@@ -1,6 +1,9 @@
 // Background Service Worker for Knowledge Clipper
 // Handles context menu, text capture, and side panel orchestration
 
+// [NOT-27] Import shared utilities
+importScripts('utils.js');
+
 console.log('🚀 Knowledge Clipper background service worker started');
 
 // Create context menu on installation
@@ -14,16 +17,22 @@ chrome.runtime.onInstalled.addListener(async () => {
     contexts: ['selection']
   });
 
+  // [NOT-27] Create context menu item for capturing webpage (bookmark)
+  chrome.contextMenus.create({
+    id: 'capture-page',
+    title: 'Capture Webpage',
+    contexts: ['page']
+  });
+
   console.log('✅ Context menu created');
 });
 
-// Handle context menu clicks
+// [NOT-20] [NOT-27] Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   console.log('📋 Context menu clicked:', info.menuItemId);
 
   if (info.menuItemId === 'capture-text') {
     console.log('🎯 Capture text triggered');
-    console.log('Selected text:', info.selectionText);
     console.log('Page URL:', info.pageUrl);
 
     try {
@@ -31,19 +40,28 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       await chrome.sidePanel.open({ windowId: tab.windowId });
       console.log('📂 Side panel opened');
 
-      // Now do async work (panel will show loading state initially)
-      const results = await chrome.scripting.executeScript({
+      // [NOT-20] Capture HTML selection
+      const htmlResults = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: extractPageMetadata,
-        args: [info.selectionText]
+        func: captureSelectionHtml
       });
 
-      const metadata = results[0].result;
+      const capturedContent = htmlResults[0].result;
+      console.log('📝 Captured HTML length:', capturedContent.html.length);
+
+      // Extract page metadata
+      const metadataResults = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: extractPageMetadata
+      });
+
+      const metadata = metadataResults[0].result;
       console.log('📊 Extracted metadata:', metadata);
 
-      // Prepare the clip data
+      // Prepare the clip data with both HTML and plain text
       const clipData = {
-        text: info.selectionText,
+        html: capturedContent.html,
+        text: capturedContent.text,
         url: info.pageUrl,
         metadata: metadata,
         timestamp: Date.now()
@@ -57,9 +75,46 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       console.error('❌ Error capturing text:', error);
     }
   }
+
+  // [NOT-27] Handle webpage capture (bookmark with no text selection)
+  if (info.menuItemId === 'capture-page') {
+    console.log('🔖 Capture webpage triggered');
+    console.log('Page URL:', info.pageUrl);
+
+    try {
+      // IMPORTANT: Open panel FIRST while we still have user gesture context
+      await chrome.sidePanel.open({ windowId: tab.windowId });
+      console.log('📂 Side panel opened');
+
+      // Extract page metadata
+      const metadataResults = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: extractPageMetadata
+      });
+
+      const metadata = metadataResults[0].result;
+      console.log('📊 Extracted metadata:', metadata);
+
+      // Prepare clip data with no text/html (bookmark mode)
+      const clipData = {
+        html: '',
+        text: '',
+        url: info.pageUrl,
+        metadata: metadata,
+        timestamp: Date.now()
+      };
+
+      // Save to storage as pending clip
+      await chrome.storage.local.set({ pendingClipData: clipData });
+      console.log('💾 Saved webpage bookmark to storage');
+
+    } catch (error) {
+      console.error('❌ Error capturing webpage:', error);
+    }
+  }
 });
 
-// Handle extension icon clicks
+// [NOT-20] Handle extension icon clicks - now captures HTML with preserved hyperlinks
 chrome.action.onClicked.addListener(async (tab) => {
   console.log('🔘 Extension icon clicked');
 
@@ -68,28 +123,29 @@ chrome.action.onClicked.addListener(async (tab) => {
     await chrome.sidePanel.open({ windowId: tab.windowId });
     console.log('📂 Side panel opened');
 
-    // Now check if there's a selection and capture it
-    const results = await chrome.scripting.executeScript({
+    // [NOT-20] Capture HTML selection
+    const htmlResults = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => window.getSelection().toString()
+      func: captureSelectionHtml
     });
 
-    const selectedText = results[0].result;
+    const capturedContent = htmlResults[0].result;
 
-    if (selectedText && selectedText.trim()) {
+    if (capturedContent.text && capturedContent.text.trim()) {
       // Has selection - capture it
       console.log('📝 Has selection, capturing...');
+      console.log('📝 Captured HTML length:', capturedContent.html.length);
 
       const metadataResults = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: extractPageMetadata,
-        args: [selectedText]
+        func: extractPageMetadata
       });
 
       const metadata = metadataResults[0].result;
 
       const clipData = {
-        text: selectedText,
+        html: capturedContent.html,
+        text: capturedContent.text,
         url: tab.url,
         metadata: metadata,
         timestamp: Date.now()
@@ -146,44 +202,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * Injected function to extract page metadata
+ * [NOT-20] Injected function to capture selection as HTML
+ * Preserves hyperlinks and formatting by using DOM Range API instead of plain text
+ * Uses XMLSerializer as specified for robust serialization
  * This runs in the context of the webpage
  */
-function extractPageMetadata(selectedText) {
-  // Extract metadata from the page
-  const metadata = {
-    title: document.title || 'Untitled',
-    author: null,
-    siteName: null,
-    favicon: null
+function captureSelectionHtml() {
+  const selection = window.getSelection();
+
+  if (!selection || selection.rangeCount === 0) {
+    return { html: '', text: '' };
+  }
+
+  // Clone the selected content to preserve DOM structure
+  const range = selection.getRangeAt(0);
+  const clonedContent = range.cloneContents();
+
+  // Use XMLSerializer for robust serialization (as per spec)
+  const serializer = new XMLSerializer();
+
+  // Create a temporary container to serialize the HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.appendChild(clonedContent);
+
+  // Serialize each child node and concatenate
+  let htmlString = '';
+  Array.from(tempDiv.childNodes).forEach(node => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      htmlString += serializer.serializeToString(node);
+    } else if (node.nodeType === Node.TEXT_NODE) {
+      // For text nodes, just use the text content
+      htmlString += node.textContent;
+    }
+  });
+
+  // Get plain text fallback
+  const textString = selection.toString();
+
+  return {
+    html: htmlString,
+    text: textString
   };
-
-  // Try to get author from meta tags
-  const authorMeta = document.querySelector('meta[name="author"]') ||
-                     document.querySelector('meta[property="article:author"]');
-  if (authorMeta) {
-    metadata.author = authorMeta.content;
-  }
-
-  // Try to get site name from Open Graph
-  const siteNameMeta = document.querySelector('meta[property="og:site_name"]');
-  if (siteNameMeta) {
-    metadata.siteName = siteNameMeta.content;
-  } else {
-    // Fallback: use hostname
-    metadata.siteName = window.location.hostname.replace('www.', '');
-  }
-
-  // Get favicon
-  const faviconLink = document.querySelector('link[rel="icon"]') ||
-                      document.querySelector('link[rel="shortcut icon"]');
-  if (faviconLink) {
-    metadata.favicon = new URL(faviconLink.href, window.location.href).href;
-  } else {
-    // Fallback to Google's favicon service
-    const domain = window.location.hostname;
-    metadata.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-  }
-
-  return metadata;
 }
+
+// [NOT-27] extractPageMetadata moved to utils.js for shared use
