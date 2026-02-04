@@ -50,6 +50,10 @@
   --color-twitter-bg: #F5F8FF;
   --color-twitter-border: #E0EEFF;
 
+  /* [NOT-39] AI & Semantic Design Tokens */
+  --color-ai-primary: #8B5CF6;
+  --color-ai-surface: rgba(139, 92, 246, 0.1);
+
   /* Focus States */
   --color-focus: #5E6AD2;
   --focus-ring: 0 0 0 3px rgba(94, 106, 210, 0.12);

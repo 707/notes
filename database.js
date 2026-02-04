@@ -58,6 +58,13 @@ db.version(4).stores({
   console.log(`✅ [NOT-33] Migrated ${migratedCount} notes with images`);
 });
 
+// [NOT-39] Version 5: Add ignoredConnections table for semantic match feedback
+db.version(5).stores({
+  notes: 'id, timestamp, *tags, readLater, starred', // No index changes
+  metadata: 'key',
+  ignoredConnections: '++id, noteId, contextUrl' // Store user feedback about irrelevant semantic matches
+});
+
 console.log('✅ Database schema defined');
 
 /**
@@ -220,6 +227,62 @@ async function getNotesCount() {
   }
 }
 
+/**
+ * [NOT-39] Add an ignored connection to prevent showing semantic matches
+ * @param {string} noteId - The ID of the note to ignore
+ * @param {string} contextUrl - The URL context where this connection should be ignored
+ * @returns {Promise<void>}
+ */
+async function addIgnoredConnection(noteId, contextUrl) {
+  try {
+    await db.ignoredConnections.add({
+      noteId,
+      contextUrl,
+      timestamp: Date.now()
+    });
+    console.log('✅ [NOT-39] Ignored connection added:', noteId, contextUrl);
+  } catch (error) {
+    console.error('❌ [NOT-39] Error adding ignored connection:', error);
+    throw error;
+  }
+}
+
+/**
+ * [NOT-39] Check if a connection is ignored for a specific context
+ * @param {string} noteId - The ID of the note to check
+ * @param {string} contextUrl - The URL context to check
+ * @returns {Promise<boolean>} - Returns true if connection is ignored
+ */
+async function isConnectionIgnored(noteId, contextUrl) {
+  try {
+    const result = await db.ignoredConnections
+      .where('noteId').equals(noteId)
+      .and(item => item.contextUrl === contextUrl)
+      .first();
+    return !!result;
+  } catch (error) {
+    console.error('❌ [NOT-39] Error checking ignored connection:', error);
+    return false;
+  }
+}
+
+/**
+ * [NOT-39] Get all ignored connections for a specific context
+ * @param {string} contextUrl - The URL context
+ * @returns {Promise<Array>} - Returns array of ignored note IDs
+ */
+async function getIgnoredConnectionsForContext(contextUrl) {
+  try {
+    const results = await db.ignoredConnections
+      .where('contextUrl').equals(contextUrl)
+      .toArray();
+    return results.map(item => item.noteId);
+  } catch (error) {
+    console.error('❌ [NOT-39] Error getting ignored connections:', error);
+    return [];
+  }
+}
+
 // Export functions for use in panel.js
 // Note: pendingClipData remains in chrome.storage.local as it's temporary and cross-context
 window.database = {
@@ -231,7 +294,10 @@ window.database = {
   getNotesByTag,
   searchNotes,
   updateNote,
-  getNotesCount
+  getNotesCount,
+  addIgnoredConnection,
+  isConnectionIgnored,
+  getIgnoredConnectionsForContext
 };
 
 console.log('✅ Database module ready');

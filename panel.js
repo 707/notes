@@ -341,17 +341,19 @@ async function reindexAllNotes() {
 window.reindexAllNotes = reindexAllNotes;
 
 /**
- * [NOT-31] Check for Contextual Recall - show pill if notes exist for current page
+ * [NOT-31] [NOT-39] Check for Contextual Recall - show pill if notes exist for current page
+ * Upgraded to include semantic matches via vector search
  * Optimized single-pass algorithm to count exact and domain matches
  * @returns {Promise<void>}
  */
 async function checkContextualRecall() {
   try {
-    // Get current tab URL
+    // Get current tab URL and title
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.url) return;
 
     const currentUrl = tab.url;
+    const currentTitle = tab.title || '';
 
     // Extract domain from current URL
     let currentDomain = '';
@@ -362,9 +364,10 @@ async function checkContextualRecall() {
       return; // Invalid URL, silently exit
     }
 
-    // Single-pass counting (optimized for large libraries)
+    // Single-pass counting for exact and domain matches (optimized for large libraries)
     let exactCount = 0;
     let domainCount = 0;
+    const exactNoteIds = new Set(); // Track exact match IDs to filter from semantic results
 
     for (const note of allNotes) {
       if (!note.url) continue;
@@ -372,6 +375,7 @@ async function checkContextualRecall() {
       // Check exact match first
       if (note.url === currentUrl) {
         exactCount++;
+        exactNoteIds.add(note.id);
         continue; // Skip domain check if exact match found
       }
 
@@ -386,35 +390,100 @@ async function checkContextualRecall() {
       }
     }
 
+    // [NOT-39] Query vector service for semantic matches
+    let semanticCount = 0;
+    semanticMatches = []; // Reset semantic matches
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'SEARCH_NOTES',
+        query: currentTitle,
+        limit: 20 // Get more results to account for filtering
+      });
+
+      if (response.success && response.results) {
+        // [NOT-39] Get ignored connections for this context
+        const ignoredNoteIds = await window.database.getIgnoredConnectionsForContext(currentUrl);
+        const ignoredSet = new Set(ignoredNoteIds);
+
+        // Filter results: similarity > 0.75, not in exact matches, not ignored
+        semanticMatches = response.results
+          .filter(result =>
+            result.similarity > 0.75 &&
+            !exactNoteIds.has(result.note.id) &&
+            !ignoredSet.has(result.note.id)
+          )
+          .slice(0, 5); // Limit to top 5 semantic matches
+
+        semanticCount = semanticMatches.length;
+        log(`🔍 [NOT-39] Found ${semanticCount} semantic matches (${response.results.length} total, filtered)`);
+      }
+    } catch (error) {
+      warn('[NOT-39] Semantic search failed:', error);
+      // Continue with exact/domain matches even if semantic search fails
+    }
+
     const pillElement = document.getElementById('context-pill');
     const pillText = pillElement?.querySelector('.pill-text');
     if (!pillElement || !pillText) return;
 
-    // Display logic: prioritize exact matches
-    if (exactCount > 0) {
+    // [NOT-39] Display logic: handle exact, semantic, and hybrid states
+    if (exactCount > 0 && semanticCount > 0) {
+      // Hybrid state: both exact and semantic matches
+      contextMatchType = 'hybrid';
+      pillText.textContent = `${exactCount} Note${exactCount === 1 ? '' : 's'} + ${semanticCount} Related`;
+      showPillWithAnimation(pillElement, 'hybrid');
+    } else if (exactCount > 0) {
+      // Exact matches only
       contextMatchType = 'exact';
       pillText.textContent = `${exactCount} Note${exactCount === 1 ? '' : 's'} Here`;
-      showPillWithAnimation(pillElement);
+      showPillWithAnimation(pillElement, 'exact');
+    } else if (semanticCount > 0) {
+      // Semantic matches only
+      contextMatchType = 'semantic';
+      pillText.textContent = `Related: ${semanticCount} Note${semanticCount === 1 ? '' : 's'}`;
+      showPillWithAnimation(pillElement, 'pulse');
     } else if (domainCount > 0) {
+      // Domain matches (fallback)
       contextMatchType = 'domain';
       pillText.textContent = `${domainCount} Note${domainCount === 1 ? '' : 's'} on Site`;
-      showPillWithAnimation(pillElement);
+      showPillWithAnimation(pillElement, 'exact');
     } else {
       // No matches
       pillElement.classList.add('hidden');
       contextMatchType = null;
+      semanticMatches = [];
     }
   } catch (error) {
-    error('[NOT-31] Error in checkContextualRecall:', error);
+    error('[NOT-31] [NOT-39] Error in checkContextualRecall:', error);
   }
 }
 
 /**
- * [NOT-31] Helper to show pill with one-time animation
+ * [NOT-31] [NOT-39] Helper to show pill with one-time animation and appropriate state
  * @param {HTMLElement} pillElement - The pill element
+ * @param {string} state - The state class to apply: 'pulse', 'hybrid', or 'exact'
  */
-function showPillWithAnimation(pillElement) {
+function showPillWithAnimation(pillElement, state = 'exact') {
   pillElement.classList.remove('hidden');
+
+  // [NOT-39] Remove all state classes first
+  pillElement.classList.remove('pulse', 'hybrid', 'active');
+
+  // [NOT-39] Apply the appropriate state class and icon
+  const iconUse = pillElement.querySelector('.icon use');
+  if (state === 'pulse') {
+    pillElement.classList.add('pulse');
+    if (iconUse) iconUse.setAttribute('href', '#icon-file-text');
+  } else if (state === 'hybrid') {
+    pillElement.classList.add('hybrid');
+    if (iconUse) iconUse.setAttribute('href', '#icon-sparkle'); // Sparkle icon for hybrid state
+  } else {
+    // exact or domain state
+    if (iconUse) iconUse.setAttribute('href', '#icon-file-text');
+  }
+
+  // One-time entrance animation
   if (!contextPillAnimated) {
     pillElement.classList.add('animate');
     contextPillAnimated = true;
@@ -874,7 +943,10 @@ let libraryListenersInitialized = false;
 
 // [NOT-31] Track if context pill animation has been shown (to prevent repeat animations)
 let contextPillAnimated = false;
-let contextMatchType = null; // 'exact' or 'domain'
+let contextMatchType = null; // 'exact', 'domain', 'semantic', or 'hybrid'
+
+// [NOT-39] Store semantic match results
+let semanticMatches = []; // Array of {note, similarity} objects for semantic matches
 
 // [NOT-33] Multi-image state
 let currentImages = []; // Array of {id, data, timestamp} objects for current note being created/edited
@@ -1806,8 +1878,9 @@ function handleToggleExpandAll() {
 }
 
 /**
- * [NOT-31] [NOT-34] Handle context pill click - toggle contextual recall filter
+ * [NOT-31] [NOT-34] [NOT-39] Handle context pill click - toggle contextual recall filter or show hybrid view
  * When activating: navigates to library (if needed), filters notes and auto-expands them
+ * For semantic/hybrid states: renders special hybrid view with sections
  * When deactivating: clears the filter
  */
 async function handleContextPillClick() {
@@ -1822,7 +1895,15 @@ async function handleContextPillClick() {
 
       const currentUrl = tab.url;
 
-      // Set filter based on match type
+      // [NOT-39] For semantic/hybrid states, just navigate and render hybrid view
+      if (contextMatchType === 'semantic' || contextMatchType === 'hybrid') {
+        pillElement?.classList.add('active');
+        await renderLibraryMode();
+        // Hybrid view will be rendered automatically by renderNotesList
+        return;
+      }
+
+      // Set filter based on match type for exact/domain
       if (contextMatchType === 'exact') {
         filterState.contextFilter = currentUrl;
       } else if (contextMatchType === 'domain') {
@@ -1843,7 +1924,7 @@ async function handleContextPillClick() {
     }
 
     // Toggle filter state (when already in library)
-    if (filterState.contextFilter) {
+    if (filterState.contextFilter || contextMatchType === 'semantic' || contextMatchType === 'hybrid') {
       // Deactivate filter
       filterState.contextFilter = null;
       pillElement?.classList.remove('active');
@@ -1855,7 +1936,15 @@ async function handleContextPillClick() {
 
       const currentUrl = tab.url;
 
-      // Set filter based on match type
+      // [NOT-39] For semantic/hybrid states, set active and render hybrid view
+      if (contextMatchType === 'semantic' || contextMatchType === 'hybrid') {
+        pillElement?.classList.add('active');
+        // Hybrid view will be rendered automatically by renderNotesList
+        filterAndRenderNotes();
+        return;
+      }
+
+      // Set filter based on match type for exact/domain
       if (contextMatchType === 'exact') {
         filterState.contextFilter = currentUrl;
       } else if (contextMatchType === 'domain') {
@@ -1880,7 +1969,7 @@ async function handleContextPillClick() {
     // Save filter state
     await saveFilterState();
   } catch (error) {
-    error('[NOT-31] Error handling context pill click:', error);
+    error('[NOT-31] [NOT-39] Error handling context pill click:', error);
   }
 }
 
@@ -2409,7 +2498,8 @@ function createFilterChip(type, value, label) {
 }
 
 /**
- * [NOT-18] Render the notes list with focus preservation
+ * [NOT-18] [NOT-39] Render the notes list with focus preservation
+ * Supports hybrid view rendering for semantic/hybrid context states
  * Saves and restores keyboard focus to prevent UX regression during re-renders
  */
 function renderNotesList() {
@@ -2419,11 +2509,11 @@ function renderNotesList() {
 
   // [NOT-18] Save focused element to restore after re-render
   const activeElement = document.activeElement;
-  const focusedNoteId = activeElement?.closest('.note-card')?.dataset?.noteId;
+  const focusedNoteId = activeElement?.closest('.note-card, .insight-card')?.dataset?.noteId;
   const focusedElementSelector = activeElement?.className;
 
-  // Clear existing notes (but keep empty states)
-  const existingCards = notesListEl.querySelectorAll('.note-card');
+  // Clear existing notes and sections (but keep empty states)
+  const existingCards = notesListEl.querySelectorAll('.note-card, .insight-card, .hybrid-section-header');
   existingCards.forEach(card => card.remove());
 
   // Handle empty states
@@ -2434,6 +2524,20 @@ function renderNotesList() {
     return;
   }
 
+  // [NOT-39] Check if we should render hybrid view (semantic or hybrid context state with active pill)
+  const pillElement = document.getElementById('context-pill');
+  const isHybridViewActive = pillElement && pillElement.classList.contains('active') &&
+    (contextMatchType === 'semantic' || contextMatchType === 'hybrid');
+
+  if (isHybridViewActive) {
+    // Render hybrid view with sections
+    renderHybridView(notesListEl);
+    emptyStateEl.classList.add('hidden');
+    searchEmptyStateEl.classList.add('hidden');
+    return;
+  }
+
+  // Standard rendering (no hybrid view)
   if (filteredNotes.length === 0) {
     // Has notes but search/filter returned nothing
     emptyStateEl.classList.add('hidden');
@@ -2476,6 +2580,266 @@ function renderNotesList() {
   }
 
   log(`📝 Rendered ${filteredNotes.length} notes`);
+}
+
+/**
+ * [NOT-39] Render hybrid view with "From this Page" and "Related Concepts" sections
+ * Used when context pill is clicked in semantic or hybrid state
+ * @param {HTMLElement} notesListEl - The notes list container element
+ */
+async function renderHybridView(notesListEl) {
+  try {
+    // Get current tab URL for filtering exact matches
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.url) return;
+
+    const currentUrl = tab.url;
+
+    // Filter exact matches from all notes
+    const exactMatches = allNotes.filter(note => note.url === currentUrl);
+
+    let indexOffset = 0;
+
+    // Section 1: "From this Page" (if we have exact matches)
+    if (exactMatches.length > 0) {
+      const header1 = document.createElement('div');
+      header1.className = 'hybrid-section-header';
+      header1.textContent = 'From this Page';
+      notesListEl.appendChild(header1);
+
+      exactMatches.forEach((note, index) => {
+        const noteCard = createNoteCard(note, index);
+        if (isExpandedAll) {
+          noteCard.classList.add('expanded');
+          noteCard.setAttribute('aria-expanded', 'true');
+        }
+        notesListEl.appendChild(noteCard);
+      });
+
+      indexOffset = exactMatches.length;
+    }
+
+    // Section 2: "Related Concepts" (if we have semantic matches)
+    if (semanticMatches.length > 0) {
+      const header2 = document.createElement('div');
+      header2.className = 'hybrid-section-header ai-section';
+      header2.textContent = 'Related Concepts';
+      notesListEl.appendChild(header2);
+
+      semanticMatches.forEach((matchResult, index) => {
+        const insightCard = renderInsightCard(matchResult, indexOffset + index);
+        notesListEl.appendChild(insightCard);
+      });
+    }
+
+    log(`📝 [NOT-39] Rendered hybrid view: ${exactMatches.length} exact, ${semanticMatches.length} semantic`);
+  } catch (error) {
+    error('[NOT-39] Error rendering hybrid view:', error);
+  }
+}
+
+/**
+ * [NOT-39] Render a compact insight card for semantic matches
+ * @param {Object} matchResult - Object containing {note, similarity}
+ * @param {number} index - The index for staggered animation delay
+ * @returns {HTMLElement} - The insight card element
+ */
+function renderInsightCard(matchResult, index = 0) {
+  const { note, similarity } = matchResult;
+
+  // Create card container
+  const card = document.createElement('div');
+  card.className = 'insight-card';
+  card.dataset.noteId = note.id;
+  card.style.animationDelay = `${index * 30}ms`;
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('role', 'article');
+  card.setAttribute('aria-label', `Related note from ${note.metadata?.siteName || 'Unknown'}`);
+
+  // Header: Topic badge + Feedback button
+  const header = document.createElement('div');
+  header.className = 'insight-card-header';
+
+  // Topic badge (extracted from first tag or site name)
+  const topicBadge = document.createElement('div');
+  topicBadge.className = 'insight-topic-badge';
+  const topic = note.tags && note.tags.length > 0
+    ? note.tags[0].replace('#', '')
+    : note.metadata?.siteName || 'Note';
+  topicBadge.textContent = topic;
+
+  // Feedback button (thumbs down)
+  const feedbackButton = document.createElement('button');
+  feedbackButton.className = 'insight-feedback-button';
+  feedbackButton.title = 'Mark as not relevant';
+  feedbackButton.innerHTML = `
+    <svg class="icon icon-sm">
+      <use href="#icon-x"></use>
+    </svg>
+  `;
+
+  feedbackButton.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await handleInsightFeedback(note.id, card);
+  });
+
+  header.appendChild(topicBadge);
+  header.appendChild(feedbackButton);
+
+  // Snippet (2 lines max)
+  const snippet = document.createElement('div');
+  snippet.className = 'insight-snippet';
+  const snippetText = note.userNote || note.text || 'No content';
+  snippet.textContent = snippetText;
+
+  // Source (favicon + domain)
+  const source = document.createElement('div');
+  source.className = 'insight-source';
+
+  const favicon = document.createElement('img');
+  favicon.className = 'insight-source-favicon';
+  favicon.src = note.metadata?.favicon || '';
+  favicon.alt = '';
+
+  const domain = document.createElement('span');
+  const siteName = note.metadata?.siteName || 'Unknown';
+  domain.textContent = siteName;
+
+  // Similarity score
+  const similarityBadge = document.createElement('span');
+  similarityBadge.className = 'insight-similarity';
+  similarityBadge.textContent = `${Math.round(similarity * 100)}%`;
+
+  source.appendChild(favicon);
+  source.appendChild(domain);
+  source.appendChild(similarityBadge);
+
+  // Assemble card
+  card.appendChild(header);
+  card.appendChild(snippet);
+  card.appendChild(source);
+
+  // Click to expand to full note card
+  card.addEventListener('click', () => {
+    expandInsightCard(note, card);
+  });
+
+  return card;
+}
+
+/**
+ * [NOT-39] Expand an insight card to show the full note
+ * @param {Object} note - The note to expand
+ * @param {HTMLElement} insightCard - The insight card element to replace
+ */
+function expandInsightCard(note, insightCard) {
+  // Create full note card
+  const fullCard = createNoteCard(note, 0);
+  fullCard.classList.add('expanded');
+  fullCard.setAttribute('aria-expanded', 'true');
+
+  // Replace insight card with full card
+  insightCard.replaceWith(fullCard);
+
+  log(`📝 [NOT-39] Expanded insight card to full note: ${note.id}`);
+}
+
+/**
+ * [NOT-39] Handle feedback on insight card - mark connection as not relevant
+ * Stores exclusion in database, removes card with animation, shows feedback tooltip
+ * @param {string} noteId - The ID of the note to ignore
+ * @param {HTMLElement} cardElement - The insight card element to remove
+ * @returns {Promise<void>}
+ */
+async function handleInsightFeedback(noteId, cardElement) {
+  try {
+    // Get current tab URL for context
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.url) {
+      warn('[NOT-39] Cannot get current URL for feedback');
+      return;
+    }
+
+    const currentUrl = tab.url;
+
+    // Disable the button to prevent duplicate clicks
+    const feedbackButton = cardElement.querySelector('.insight-feedback-button');
+    if (feedbackButton) {
+      feedbackButton.disabled = true;
+      feedbackButton.style.opacity = '0.5';
+    }
+
+    // Store exclusion in database
+    await window.database.addIgnoredConnection(noteId, currentUrl);
+    log(`✅ [NOT-39] Marked connection as not relevant: ${noteId} on ${currentUrl}`);
+
+    // Remove from semanticMatches array
+    semanticMatches = semanticMatches.filter(match => match.note.id !== noteId);
+
+    // Add removing animation class
+    cardElement.classList.add('removing');
+
+    // Show tooltip notification
+    showTooltip(cardElement, 'Marked as not relevant');
+
+    // Remove card after animation completes
+    setTimeout(() => {
+      cardElement.remove();
+
+      // If no more semantic matches, refresh context pill
+      if (semanticMatches.length === 0) {
+        checkContextualRecall();
+      }
+    }, 200); // Match animation duration
+
+  } catch (error) {
+    error('[NOT-39] Error handling insight feedback:', error);
+
+    // Re-enable button on error
+    const feedbackButton = cardElement.querySelector('.insight-feedback-button');
+    if (feedbackButton) {
+      feedbackButton.disabled = false;
+      feedbackButton.style.opacity = '';
+    }
+
+    alert('Failed to save feedback. Please try again.');
+  }
+}
+
+/**
+ * [NOT-39] Show a temporary tooltip notification
+ * @param {HTMLElement} anchorElement - Element to position tooltip near
+ * @param {string} message - Message to display
+ */
+function showTooltip(anchorElement, message) {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'feedback-tooltip';
+  tooltip.textContent = message;
+  tooltip.style.cssText = `
+    position: fixed;
+    background: var(--color-text-primary);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    z-index: 1000;
+    pointer-events: none;
+    animation: enter-scale var(--duration-base) var(--ease-out-spring);
+  `;
+
+  // Position near the anchor element
+  const rect = anchorElement.getBoundingClientRect();
+  tooltip.style.top = `${rect.top}px`;
+  tooltip.style.left = `${rect.left + rect.width / 2}px`;
+  tooltip.style.transform = 'translateX(-50%)';
+
+  document.body.appendChild(tooltip);
+
+  // Remove after 2 seconds
+  setTimeout(() => {
+    tooltip.style.animation = 'exit-scale var(--duration-base) var(--ease-out-spring) forwards';
+    setTimeout(() => tooltip.remove(), 200);
+  }, 2000);
 }
 
 /**
