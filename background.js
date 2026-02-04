@@ -69,6 +69,55 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 });
 
 /**
+ * [NOT-40] Check hardware compatibility for Gemini Nano
+ * Requirements: 22GB storage, 16GB RAM + 4 cores OR 4GB VRAM GPU
+ * @returns {Object} - { compatible: boolean, reason: string }
+ */
+async function checkHardwareCompatibility() {
+  const issues = [];
+
+  // Check available storage (need 22GB)
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const estimate = await navigator.storage.estimate();
+      const availableGB = (estimate.quota - estimate.usage) / (1024 ** 3);
+      console.log(`💾 [NOT-40] Available storage: ${availableGB.toFixed(2)} GB`);
+
+      if (availableGB < 22) {
+        issues.push(`Only ${availableGB.toFixed(1)}GB storage available (need 22GB)`);
+      }
+    }
+  } catch (e) {
+    console.warn('[NOT-40] Could not check storage:', e);
+  }
+
+  // Check RAM (approximate - deviceMemory is not always accurate)
+  if (navigator.deviceMemory) {
+    const ramGB = navigator.deviceMemory;
+    console.log(`🧠 [NOT-40] Approximate RAM: ${ramGB} GB`);
+
+    if (ramGB < 16) {
+      issues.push(`Only ${ramGB}GB RAM detected (need 16GB RAM or 4GB VRAM GPU)`);
+    }
+  }
+
+  // Check CPU cores (need 4+ if using CPU)
+  if (navigator.hardwareConcurrency) {
+    const cores = navigator.hardwareConcurrency;
+    console.log(`⚙️  [NOT-40] CPU cores: ${cores}`);
+
+    if (cores < 4 && (!navigator.deviceMemory || navigator.deviceMemory < 16)) {
+      issues.push(`Only ${cores} CPU cores (need 4+ for CPU mode)`);
+    }
+  }
+
+  return {
+    compatible: issues.length === 0,
+    issues: issues
+  };
+}
+
+/**
  * [NOT-40] Initialize Gemini Nano and trigger model download
  * Checks availability and creates a session to trigger download if needed
  */
@@ -80,17 +129,34 @@ async function initializeGeminiNano() {
     // Update storage so settings page can show status
     await chrome.storage.local.set({ geminiDownloadState });
 
-    // Check if Summarizer API exists
-    if (!self.ai || !self.ai.summarizer) {
-      console.warn('⚠️  [NOT-40] Summarizer API not available on this system');
+    // [NOT-40] Check hardware compatibility first
+    const hwCheck = await checkHardwareCompatibility();
+    if (!hwCheck.compatible) {
+      console.warn('⚠️  [NOT-40] Hardware may not meet requirements:', hwCheck.issues);
       geminiDownloadState = {
         status: 'unavailable',
         progress: 0,
-        error: 'Summarizer API not found. Requires Chrome 138+ with compatible hardware.'
+        error: `Hardware requirements not met:\n${hwCheck.issues.join('\n')}\n\nNote: Gemini Nano requires 22GB storage and either 16GB RAM + 4 cores OR 4GB VRAM GPU.`
       };
       await chrome.storage.local.set({ geminiDownloadState });
       return;
     }
+
+    // Check if Summarizer API exists (Chrome 138+)
+    if (!self.ai || !self.ai.summarizer) {
+      console.warn('⚠️  [NOT-40] Summarizer API not available');
+      geminiDownloadState = {
+        status: 'unavailable',
+        progress: 0,
+        error: 'Summarizer API not available. Requires Chrome 138+ or enable flags:\n• chrome://flags/#prompt-api-for-gemini-nano\n• chrome://flags/#optimization-guide-on-device-model\n\nFuture: Will support OpenRouter API fallback.'
+      };
+      await chrome.storage.local.set({ geminiDownloadState });
+      // TODO: [Future] Add OpenRouter API fallback for synthesis when Gemini Nano unavailable
+      return;
+    }
+
+    console.log('✅ [NOT-40] Summarizer API found, initializing...');
+
 
     // Check availability status
     const capabilities = await self.ai.summarizer.capabilities();
