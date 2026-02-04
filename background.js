@@ -1,10 +1,16 @@
 // Background Service Worker for Knowledge Clipper
 // Handles context menu, text capture, and side panel orchestration
 
-// [NOT-27] Import shared utilities
-importScripts('utils.js');
+// [NOT-38] Import VectorService for semantic search
+import { vectorService } from './vector-service.js';
 
 console.log('🚀 Knowledge Clipper background service worker started');
+
+// [NOT-38] Initialize VectorService on startup
+console.log('🧠 [NOT-38] Initializing VectorService...');
+vectorService.init().catch(error => {
+  console.error('❌ [NOT-38] Failed to initialize VectorService:', error);
+});
 
 // Create context menu on installation
 chrome.runtime.onInstalled.addListener(async () => {
@@ -246,6 +252,97 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
   }
 
+  // [NOT-38] Handle INDEX_NOTE requests from panel
+  if (message.action === 'INDEX_NOTE') {
+    console.log('🔍 [NOT-38] INDEX_NOTE request received');
+
+    if (!message.note) {
+      console.error('❌ [NOT-38] No note provided in INDEX_NOTE message');
+      sendResponse({ success: false, error: 'No note provided' });
+      return true;
+    }
+
+    // Index the note asynchronously
+    (async () => {
+      try {
+        await vectorService.addNoteToIndex(message.note);
+        console.log('✅ [NOT-38] Note indexed successfully');
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error('❌ [NOT-38] Failed to index note:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+
+    return true; // Keep message channel open for async response
+  }
+
+  // [NOT-38] Handle SEARCH_NOTES requests from panel
+  if (message.action === 'SEARCH_NOTES') {
+    console.log('🔍 [NOT-38] SEARCH_NOTES request received');
+
+    if (!message.query) {
+      console.error('❌ [NOT-38] No query provided in SEARCH_NOTES message');
+      sendResponse({ success: false, error: 'No query provided' });
+      return true;
+    }
+
+    // Search notes asynchronously
+    (async () => {
+      try {
+        const results = await vectorService.search(message.query, message.limit || 10);
+        console.log(`✅ [NOT-38] Search complete: ${results.length} results`);
+        sendResponse({ success: true, results: results });
+      } catch (error) {
+        console.error('❌ [NOT-38] Search failed:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+
+    return true; // Keep message channel open for async response
+  }
+
+  // [NOT-38] Handle REINDEX_ALL requests (for backfill)
+  if (message.action === 'REINDEX_ALL') {
+    console.log('🔄 [NOT-38] REINDEX_ALL request received');
+
+    if (!message.getAllNotesFn) {
+      console.error('❌ [NOT-38] No getAllNotesFn provided');
+      sendResponse({ success: false, error: 'No getAllNotesFn provided' });
+      return true;
+    }
+
+    // Re-index all notes asynchronously
+    (async () => {
+      try {
+        // The function reference won't work across contexts, so we'll need
+        // the panel to send all notes instead
+        if (!message.allNotes) {
+          sendResponse({ success: false, error: 'Please provide allNotes array' });
+          return;
+        }
+
+        let indexedCount = 0;
+        for (const note of message.allNotes) {
+          try {
+            await vectorService.addNoteToIndex(note);
+            indexedCount++;
+          } catch (error) {
+            console.error(`❌ Failed to index note ${note.id}:`, error);
+          }
+        }
+
+        console.log(`✅ [NOT-38] Re-index complete: ${indexedCount}/${message.allNotes.length} notes`);
+        sendResponse({ success: true, indexedCount: indexedCount });
+      } catch (error) {
+        console.error('❌ [NOT-38] Re-index failed:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+
+    return true; // Keep message channel open for async response
+  }
+
   return true; // Keep message channel open for async response
 });
 
@@ -293,7 +390,50 @@ function captureSelectionHtml() {
   };
 }
 
-// [NOT-27] extractPageMetadata moved to utils.js for shared use
+/**
+ * [NOT-27] Injected function to extract page metadata
+ * This runs in the context of the webpage
+ *
+ * @returns {Object} Metadata object with title, author, siteName, and favicon
+ */
+function extractPageMetadata() {
+  // Extract metadata from the page
+  const metadata = {
+    title: document.title || 'Untitled',
+    author: null,
+    siteName: null,
+    favicon: null
+  };
+
+  // Try to get author from meta tags
+  const authorMeta = document.querySelector('meta[name="author"]') ||
+                     document.querySelector('meta[property="article:author"]');
+  if (authorMeta) {
+    metadata.author = authorMeta.content;
+  }
+
+  // Try to get site name from Open Graph
+  const siteNameMeta = document.querySelector('meta[property="og:site_name"]');
+  if (siteNameMeta) {
+    metadata.siteName = siteNameMeta.content;
+  } else {
+    // Fallback: use hostname
+    metadata.siteName = window.location.hostname.replace('www.', '');
+  }
+
+  // Get favicon
+  const faviconLink = document.querySelector('link[rel="icon"]') ||
+                      document.querySelector('link[rel="shortcut icon"]');
+  if (faviconLink) {
+    metadata.favicon = new URL(faviconLink.href, window.location.href).href;
+  } else {
+    // Fallback to Google's favicon service
+    const domain = window.location.hostname;
+    metadata.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+  }
+
+  return metadata;
+}
 
 /**
  * [NOT-29] Fetch an image and convert it to Base64 for offline persistence

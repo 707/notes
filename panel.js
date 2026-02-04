@@ -259,6 +259,88 @@ function enhanceRichMedia(htmlString) {
 }
 
 /**
+ * [NOT-38] Check if vector index needs initialization and trigger backfill if needed
+ * Runs on first panel load to ensure all existing notes are indexed
+ * @returns {Promise<void>}
+ */
+async function checkAndReindexIfNeeded() {
+  try {
+    // Check if vector index has been initialized
+    const { vectorIndexInitialized } = await chrome.storage.local.get('vectorIndexInitialized');
+
+    if (!vectorIndexInitialized) {
+      log('🔄 [NOT-38] First run detected, starting vector index backfill...');
+
+      // Get all notes from database
+      const allNotes = await window.database.getAllNotes();
+
+      if (allNotes.length > 0) {
+        log(`📊 [NOT-38] Indexing ${allNotes.length} existing notes...`);
+
+        // Send all notes to background for indexing
+        try {
+          const response = await chrome.runtime.sendMessage({
+            action: 'REINDEX_ALL',
+            allNotes: allNotes
+          });
+
+          if (response.success) {
+            log(`✅ [NOT-38] Backfill complete: ${response.indexedCount} notes indexed`);
+            // Mark as initialized
+            await chrome.storage.local.set({ vectorIndexInitialized: true });
+          } else {
+            warn('⚠️  [NOT-38] Backfill failed:', response.error);
+          }
+        } catch (error) {
+          warn('⚠️  [NOT-38] Failed to send reindex request:', error);
+        }
+      } else {
+        log('📭 [NOT-38] No notes to index, marking as initialized');
+        await chrome.storage.local.set({ vectorIndexInitialized: true });
+      }
+    } else {
+      log('✅ [NOT-38] Vector index already initialized');
+    }
+  } catch (error) {
+    error('❌ [NOT-38] Error during reindex check:', error);
+    // Don't block panel loading if this fails
+  }
+}
+
+/**
+ * [NOT-38] Manually trigger a full re-index of all notes
+ * Useful for debugging or after major changes
+ * Can be called from browser console: window.reindexAllNotes()
+ * @returns {Promise<void>}
+ */
+async function reindexAllNotes() {
+  try {
+    console.log('🔄 [NOT-38] Manual re-index triggered...');
+
+    const allNotes = await window.database.getAllNotes();
+    console.log(`📊 [NOT-38] Re-indexing ${allNotes.length} notes...`);
+
+    const response = await chrome.runtime.sendMessage({
+      action: 'REINDEX_ALL',
+      allNotes: allNotes
+    });
+
+    if (response.success) {
+      console.log(`✅ [NOT-38] Re-index complete: ${response.indexedCount}/${allNotes.length} notes indexed`);
+      // Reset the initialized flag to force re-check
+      await chrome.storage.local.set({ vectorIndexInitialized: true });
+    } else {
+      console.error('❌ [NOT-38] Re-index failed:', response.error);
+    }
+  } catch (error) {
+    console.error('❌ [NOT-38] Error during manual re-index:', error);
+  }
+}
+
+// [NOT-38] Expose reindex function for manual use
+window.reindexAllNotes = reindexAllNotes;
+
+/**
  * [NOT-31] Check for Contextual Recall - show pill if notes exist for current page
  * Optimized single-pass algorithm to count exact and domain matches
  * @returns {Promise<void>}
@@ -1394,6 +1476,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Run data migration (if needed)
     await window.database.migrateFromChromeStorage();
 
+    // [NOT-38] Auto-reindex for semantic search on first run
+    await checkAndReindexIfNeeded();
+
     // Load persisted filter state
     await loadFilterState();
 
@@ -1654,6 +1739,18 @@ async function handleSaveClip(clipData = {}) {
 
     // Save note to IndexedDB
     await window.database.addNote(note);
+
+    // [NOT-38] Index note for semantic search
+    try {
+      await chrome.runtime.sendMessage({
+        action: 'INDEX_NOTE',
+        note: note
+      });
+      log('✅ [NOT-38] Note indexed for semantic search');
+    } catch (error) {
+      // Don't fail the save if indexing fails
+      warn('⚠️  [NOT-38] Failed to index note for search:', error);
+    }
 
     // Remove pending clip data from chrome.storage
     await chrome.storage.local.remove('pendingClipData');
@@ -3159,6 +3256,18 @@ async function handleSaveEdit(noteId, cardElement, newUserNote, newTags, newImag
     await window.database.updateNote(noteId, updates);
 
     log('✅ [NOT-33] Note updated successfully');
+
+    // [NOT-38] Re-index note for semantic search if content changed
+    try {
+      await chrome.runtime.sendMessage({
+        action: 'INDEX_NOTE',
+        note: note
+      });
+      log('✅ [NOT-38] Note re-indexed for semantic search');
+    } catch (error) {
+      // Don't fail the update if indexing fails
+      warn('⚠️  [NOT-38] Failed to re-index note for search:', error);
+    }
 
     // [NOT-33] Reset edit mode flags before exiting (handleCancelEdit will do this too, but let's be explicit)
     isEditModeActive = false;
