@@ -316,11 +316,14 @@ body {
 }
 
 /* Capture Mode */
+/* [NOT-36] Allow vertical scrolling for long content */
 .capture-mode {
   padding: var(--spacing-lg);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  flex: 1;
+  overflow-y: auto;
 }
 
 .source-bar {

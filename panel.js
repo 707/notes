@@ -492,6 +492,89 @@ function handleFileUpload(files, isEditMode = false) {
 }
 
 /**
+ * [NOT-36] Dedicated storage listener for web capture mode
+ * Handles pendingClipData changes when in listening mode
+ * Supports both Create and Edit modes
+ */
+function handleWebCaptureStorageChange(changes, area) {
+  if (area !== 'local' || !changes.pendingClipData || !changes.pendingClipData.newValue) {
+    return;
+  }
+
+  const newClipData = changes.pendingClipData.newValue;
+
+  // Only handle if we're in web capture listening mode and it's an image
+  if (isWebCaptureListening && newClipData.type === 'image' && newClipData.imageData) {
+    log(`🖼️  [NOT-36] Web capture image received, appending to ${isEditModeActive ? 'edit mode' : 'capture mode'} note...`);
+
+    // Add the captured image to the correct array based on mode
+    const imageObject = {
+      id: crypto.randomUUID(),
+      data: newClipData.imageData,
+      timestamp: Date.now()
+    };
+
+    if (isEditModeActive) {
+      // Edit mode - append to editModeImages
+      editModeImages.push(imageObject);
+
+      // Enforce 5-image limit
+      if (editModeImages.length >= 5) {
+        log('⚠️  [NOT-36] Reached 5-image limit, deactivating listening mode');
+        isWebCaptureListening = false;
+
+        const captureButton = document.getElementById('edit-capture-webpage-image-button');
+        if (captureButton) {
+          captureButton.classList.remove('active');
+          const buttonSpan = captureButton.querySelector('span');
+          if (buttonSpan) {
+            buttonSpan.textContent = 'Capture from Webpage';
+          }
+          captureButton.setAttribute('title', 'Capture image from webpage');
+        }
+
+        // Remove listener when deactivating
+        chrome.storage.onChanged.removeListener(handleWebCaptureStorageChange);
+      }
+
+      // Re-render edit mode gallery
+      const cardElement = document.querySelector('.note-card.editing');
+      if (cardElement) {
+        renderEditModeImageGallery(cardElement, editModeImages);
+      }
+    } else {
+      // Capture mode - append to currentImages
+      currentImages.push(imageObject);
+
+      // Enforce 5-image limit
+      if (currentImages.length >= 5) {
+        log('⚠️  [NOT-36] Reached 5-image limit, deactivating listening mode');
+        isWebCaptureListening = false;
+
+        const captureButton = document.getElementById('capture-webpage-image-button');
+        if (captureButton) {
+          captureButton.classList.remove('active');
+          const buttonSpan = captureButton.querySelector('span');
+          if (buttonSpan) {
+            buttonSpan.textContent = 'Capture from Webpage';
+          }
+          captureButton.setAttribute('title', 'Capture image from webpage');
+        }
+
+        // Remove listener when deactivating
+        chrome.storage.onChanged.removeListener(handleWebCaptureStorageChange);
+      }
+
+      // Re-render capture mode preview list
+      renderImagePreviews('capture-image-preview-list', currentImages, false);
+    }
+
+    // Clear the pending clip data so it doesn't trigger a new note
+    chrome.storage.local.remove('pendingClipData');
+  }
+}
+
+/**
  * [NOT-33] Activate web capture mode - listen for right-click image capture
  * Toggles UI state to indicate "Listening..." mode
  * Works for both capture mode and edit mode
@@ -518,6 +601,9 @@ function activateWebCaptureMode(buttonId = 'capture-webpage-image-button') {
   isWebCaptureListening = !isWebCaptureListening;
 
   if (isWebCaptureListening) {
+    // [NOT-36] Add dedicated storage listener when activating
+    chrome.storage.onChanged.addListener(handleWebCaptureStorageChange);
+
     // Update button to show "Listening..." state
     captureButton.classList.add('active');
     const buttonSpan = captureButton.querySelector('span');
@@ -525,8 +611,11 @@ function activateWebCaptureMode(buttonId = 'capture-webpage-image-button') {
       buttonSpan.textContent = 'Right-click any image on page to capture';
     }
     captureButton.setAttribute('title', 'Cancel listening mode');
-    log(`✅ [NOT-33] Listening for webpage image capture (${isEditModeActive ? 'Edit' : 'Capture'} mode)...`);
+    log(`✅ [NOT-36] Listening for webpage image capture (${isEditModeActive ? 'Edit' : 'Capture'} mode)...`);
   } else {
+    // [NOT-36] Remove dedicated storage listener when deactivating
+    chrome.storage.onChanged.removeListener(handleWebCaptureStorageChange);
+
     // Deactivate listening mode
     captureButton.classList.remove('active');
     const buttonSpan = captureButton.querySelector('span');
@@ -534,7 +623,7 @@ function activateWebCaptureMode(buttonId = 'capture-webpage-image-button') {
       buttonSpan.textContent = 'Capture from Webpage';
     }
     captureButton.setAttribute('title', 'Capture image from webpage');
-    log('⏹️  [NOT-33] Stopped listening for webpage image capture');
+    log('⏹️  [NOT-36] Stopped listening for webpage image capture');
   }
 }
 
@@ -1264,10 +1353,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // [NOT-33] Webpage image capture button handler
+  // [NOT-33] [NOT-36] Webpage image capture button handler - wrap to pass buttonId
   const captureWebpageImageButton = document.getElementById('capture-webpage-image-button');
   if (captureWebpageImageButton) {
-    captureWebpageImageButton.addEventListener('click', activateWebCaptureMode);
+    captureWebpageImageButton.addEventListener('click', () => activateWebCaptureMode('capture-webpage-image-button'));
   }
 
   // [NOT-34] Navigation button handlers
@@ -1323,80 +1412,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderLibraryMode();
       }, 500); // Wait 500ms for data to arrive
 
-      // Listen for storage changes
+      // [NOT-36] Listen for storage changes (boot-time listener only for initial capture)
+      // Web capture listening mode is now handled by dedicated listener in activateWebCaptureMode
       const listener = (changes, area) => {
         if (area === 'local' && changes.pendingClipData && changes.pendingClipData.newValue) {
           const newClipData = changes.pendingClipData.newValue;
 
-          // [NOT-33] Check if we're in web capture listening mode
-          if (isWebCaptureListening && newClipData.type === 'image' && newClipData.imageData) {
-            log(`🖼️  [NOT-33] Web capture image received, appending to ${isEditModeActive ? 'edit mode' : 'capture mode'} note...`);
-
-            // Add the captured image to the correct array based on mode
-            const imageObject = {
-              id: crypto.randomUUID(),
-              data: newClipData.imageData,
-              timestamp: Date.now()
-            };
-
-            if (isEditModeActive) {
-              // Edit mode - append to editModeImages
-              editModeImages.push(imageObject);
-
-              // Enforce 5-image limit
-              if (editModeImages.length >= 5) {
-                log('⚠️  [NOT-33] Reached 5-image limit, deactivating listening mode');
-                isWebCaptureListening = false;
-
-                const captureButton = document.getElementById('edit-capture-webpage-image-button');
-                if (captureButton) {
-                  captureButton.classList.remove('active');
-                  const buttonSpan = captureButton.querySelector('span');
-                  if (buttonSpan) {
-                    buttonSpan.textContent = 'Capture from Webpage';
-                  }
-                  captureButton.setAttribute('title', 'Capture image from webpage');
-                }
-              }
-
-              // Re-render edit mode gallery
-              const cardElement = document.querySelector('.note-card.editing');
-              if (cardElement) {
-                renderEditModeImageGallery(cardElement, editModeImages);
-              }
-            } else {
-              // Capture mode - append to currentImages
-              currentImages.push(imageObject);
-
-              // Enforce 5-image limit
-              if (currentImages.length >= 5) {
-                log('⚠️  [NOT-33] Reached 5-image limit, deactivating listening mode');
-                isWebCaptureListening = false;
-
-                const captureButton = document.getElementById('capture-webpage-image-button');
-                if (captureButton) {
-                  captureButton.classList.remove('active');
-                  const buttonSpan = captureButton.querySelector('span');
-                  if (buttonSpan) {
-                    buttonSpan.textContent = 'Capture from Webpage';
-                  }
-                  captureButton.setAttribute('title', 'Capture image from webpage');
-                }
-              }
-
-              // Re-render capture mode preview list
-              renderImagePreviews('capture-image-preview-list', currentImages, false);
-            }
-
-            // Clear the pending clip data so it doesn't trigger a new note
-            chrome.storage.local.remove('pendingClipData');
-          } else {
-            // Normal flow - render capture mode with new clip data
+          // [NOT-36] Web capture mode is now handled by dedicated listener
+          // This boot-time listener only handles normal flow (new clip data rendering)
+          if (!isWebCaptureListening) {
             log('📋 Pending clip data arrived, rendering Capture Mode');
             clearTimeout(timeoutId);
             chrome.storage.onChanged.removeListener(listener);
             renderCaptureMode(newClipData);
           }
+          // If in web capture listening mode, the dedicated listener will handle it
         }
       };
 
@@ -1737,6 +1767,9 @@ async function handleContextPillClick() {
       }
 
       pillElement?.classList.add('active');
+
+      // [NOT-36] Auto-expand notes when activating context filter
+      setAllNotesExpanded(true);
     }
 
     // Apply filter and re-render
