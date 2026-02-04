@@ -1,6 +1,6 @@
-// [NOT-40] Gemini Service - AI Synthesis using Chrome's built-in window.ai
+// [NOT-40] Gemini Service - AI Synthesis using Chrome's built-in Summarizer API
 // Provides synthesis capabilities to generate concise summaries from context and related notes
-// Uses Gemini Nano via the Prompt API for on-device AI processing
+// Uses Gemini Nano via the Summarizer API for on-device AI processing
 
 /**
  * [NOT-40] SynthesisQueue - Sequential synthesis job processor
@@ -69,33 +69,34 @@ class SynthesisQueue {
 }
 
 /**
- * GeminiService - Manages AI synthesis using Chrome's window.ai (Gemini Nano)
+ * GeminiService - Manages AI synthesis using Chrome's Summarizer API (Gemini Nano)
  *
  * Provides semantic synthesis by combining current page context with related notes
  * to generate concise, markdown-formatted summaries.
  *
  * Requirements:
- * - Chrome Canary/Dev with Gemini Nano enabled via flags
- * - window.ai.languageModel API availability
+ * - Chrome 138+ stable (no flags required in production)
+ * - Gemini Nano model (auto-downloads on first use)
  */
 class GeminiService {
   constructor() {
-    this.session = null;
+    this.summarizer = null;
     this.isAvailable = false;
     this.availabilityStatus = null;
+    this.downloadProgress = 0;
     this.synthesisQueue = new SynthesisQueue();
   }
 
   /**
-   * [NOT-40] Check if window.ai is available and Gemini Nano is ready
+   * [NOT-40] Check if Summarizer API is available and Gemini Nano is ready
    * @returns {Promise<boolean>} - True if available, false otherwise
    */
   async checkAvailability() {
-    console.log('🔍 [NOT-40] Checking Gemini Nano availability...');
+    console.log('🔍 [NOT-40] Checking Summarizer API availability...');
 
-    // Check if window.ai exists
-    if (!window.ai || !window.ai.languageModel) {
-      console.warn('⚠️  [NOT-40] window.ai not found. Gemini Nano is not available.');
+    // Check if Summarizer API exists
+    if (!self.ai || !self.ai.summarizer) {
+      console.warn('⚠️  [NOT-40] Summarizer API not found. Gemini Nano is not available.');
       this.isAvailable = false;
       this.availabilityStatus = 'unavailable';
       return false;
@@ -103,23 +104,23 @@ class GeminiService {
 
     try {
       // Check model availability status
-      const capabilities = await window.ai.languageModel.capabilities();
-      this.availabilityStatus = capabilities.available;
+      const availability = await self.ai.summarizer.capabilities();
+      this.availabilityStatus = availability.available;
 
       console.log('📊 [NOT-40] Gemini Nano status:', this.availabilityStatus);
 
       // Available states: "readily", "after-download", "no"
       if (this.availabilityStatus === 'readily' || this.availabilityStatus === 'after-download') {
         this.isAvailable = true;
-        console.log('✅ [NOT-40] Gemini Nano is available');
+        console.log('✅ [NOT-40] Summarizer API is available');
         return true;
       } else {
         this.isAvailable = false;
-        console.warn('⚠️  [NOT-40] Gemini Nano is not available:', this.availabilityStatus);
+        console.warn('⚠️  [NOT-40] Summarizer API is not available:', this.availabilityStatus);
         return false;
       }
     } catch (error) {
-      console.error('❌ [NOT-40] Error checking Gemini Nano availability:', error);
+      console.error('❌ [NOT-40] Error checking Summarizer API availability:', error);
       this.isAvailable = false;
       this.availabilityStatus = 'error';
       return false;
@@ -127,39 +128,45 @@ class GeminiService {
   }
 
   /**
-   * [NOT-40] Create an AI session with system prompts
+   * [NOT-40] Create a Summarizer session with download progress monitoring
    * Initializes the Gemini Nano model for synthesis tasks
-   * @returns {Promise<Object>} - The AI session object
+   * @param {Function} onProgress - Optional callback for download progress (0-1)
+   * @returns {Promise<Object>} - The Summarizer session object
    */
-  async createSession() {
-    console.log('🔧 [NOT-40] Creating Gemini Nano session...');
+  async createSession(onProgress = null) {
+    console.log('🔧 [NOT-40] Creating Summarizer session...');
 
     if (!this.isAvailable) {
-      throw new Error('Gemini Nano is not available. Cannot create session.');
+      throw new Error('Summarizer API is not available. Cannot create session.');
     }
 
     try {
-      // Create session with system prompt
-      this.session = await window.ai.languageModel.create({
-        systemPrompt: `You are a research assistant helping users synthesize connections between web content.
+      // Create session with shared context and download monitor
+      const options = {
+        type: 'key-points', // Use key-points for synthesis (generates bullet points)
+        format: 'markdown',
+        length: 'medium',
+        sharedContext: 'You are helping a user understand how their saved notes relate to the webpage they are currently viewing. Focus on meaningful connections and insights.'
+      };
 
-Your task is to:
-1. Analyze the current page context
-2. Identify meaningful connections with the user's related notes
-3. Generate a concise, insightful summary explaining these connections
-4. Use Markdown formatting for clarity
+      // Add download progress monitor if callback provided
+      if (onProgress) {
+        options.monitor = (m) => {
+          m.addEventListener('downloadprogress', (e) => {
+            const progress = e.loaded / e.total;
+            this.downloadProgress = progress;
+            console.log(`📥 [NOT-40] Download progress: ${Math.round(progress * 100)}%`);
+            onProgress(progress);
+          });
+        };
+      }
 
-Guidelines:
-- Be concise (2-4 sentences maximum)
-- Focus on "why" these notes are relevant, not just "what" they are
-- Use bullet points for multiple connections
-- Avoid repeating obvious information from titles`
-      });
+      this.summarizer = await self.ai.summarizer.create(options);
 
-      console.log('✅ [NOT-40] Session created successfully');
-      return this.session;
+      console.log('✅ [NOT-40] Summarizer session created successfully');
+      return this.summarizer;
     } catch (error) {
-      console.error('❌ [NOT-40] Failed to create session:', error);
+      console.error('❌ [NOT-40] Failed to create Summarizer session:', error);
       throw error;
     }
   }
@@ -170,7 +177,7 @@ Guidelines:
    *
    * @param {Object} currentContext - Current page info { title, url }
    * @param {Array} relatedNotes - Array of related notes with { text, title, url, similarity }
-   * @returns {ReadableStream} - Stream of generated text tokens
+   * @returns {AsyncIterable} - Stream of generated text tokens
    */
   async generateSynthesis(currentContext, relatedNotes) {
     console.log('✨ [NOT-40] Starting synthesis generation...');
@@ -189,17 +196,17 @@ Guidelines:
     // Queue the synthesis task
     return this.synthesisQueue.enqueue(async () => {
       // Ensure session exists
-      if (!this.session) {
+      if (!this.summarizer) {
         await this.createSession();
       }
 
-      // Construct the prompt
-      const prompt = this.constructPrompt(currentContext, relatedNotes);
-      console.log('📝 [NOT-40] Constructed prompt:', prompt);
+      // Construct the input text
+      const inputText = this.constructInput(currentContext, relatedNotes);
+      console.log('📝 [NOT-40] Constructed input length:', inputText.length);
 
       try {
         // Generate streaming response
-        const stream = await this.session.promptStreaming(prompt);
+        const stream = await this.summarizer.summarizeStreaming(inputText);
         console.log('🌊 [NOT-40] Streaming synthesis started');
         return stream;
       } catch (error) {
@@ -210,29 +217,32 @@ Guidelines:
   }
 
   /**
-   * [NOT-40] Construct the synthesis prompt from context and notes
+   * [NOT-40] Construct the input text for summarization
+   * Frames the content to encourage synthesis rather than simple summarization
    * @private
    * @param {Object} currentContext - Current page info
    * @param {Array} relatedNotes - Related notes
-   * @returns {string} - Formatted prompt
+   * @returns {string} - Formatted input text
    */
-  constructPrompt(currentContext, relatedNotes) {
+  constructInput(currentContext, relatedNotes) {
     // Format related notes (take top 5 for context window efficiency)
     const topNotes = relatedNotes.slice(0, 5);
     const notesText = topNotes.map((item, index) => {
       const note = item.note || item; // Handle different data structures
-      const similarity = item.similarity ? ` (${Math.round(item.similarity * 100)}% relevant)` : '';
-      return `${index + 1}. **${note.title || 'Untitled'}**${similarity}\n   ${note.text || note.content || 'No content'}`;
+      const similarity = item.similarity ? ` (${Math.round(item.similarity * 100)}% match)` : '';
+      const title = note.metadata?.title || note.title || 'Untitled';
+      const content = note.text || note.content || 'No content';
+      return `Note ${index + 1}: "${title}"${similarity}\n${content}`;
     }).join('\n\n');
 
-    // Construct full prompt
-    return `Current Page: **${currentContext.title}**
-${currentContext.url ? `URL: ${currentContext.url}` : ''}
+    // Construct input text that encourages synthesis
+    return `The user is reading: "${currentContext.title}"
 
-Related Notes from Your Library:
+They have these related notes from their knowledge library:
+
 ${notesText}
 
-Task: Explain how these related notes connect to the current page. What insights or patterns emerge? Be concise and use Markdown.`;
+Explain the key connections between the current page and these notes. What patterns or insights emerge? Focus on why these notes are relevant.`;
   }
 
   /**
@@ -248,14 +258,14 @@ Task: Explain how these related notes connect to the current page. What insights
    * Useful for cleanup or resetting state
    */
   async destroySession() {
-    if (this.session) {
+    if (this.summarizer) {
       try {
-        await this.session.destroy();
-        console.log('🗑️  [NOT-40] Session destroyed');
+        await this.summarizer.destroy();
+        console.log('🗑️  [NOT-40] Summarizer session destroyed');
       } catch (error) {
         console.error('❌ [NOT-40] Error destroying session:', error);
       }
-      this.session = null;
+      this.summarizer = null;
     }
   }
 }
@@ -266,4 +276,6 @@ const geminiService = new GeminiService();
 // Make available globally for non-module scripts
 if (typeof window !== 'undefined') {
   window.geminiService = geminiService;
+} else if (typeof self !== 'undefined') {
+  self.geminiService = geminiService;
 }

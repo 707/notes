@@ -2029,11 +2029,232 @@ async function renderAIChatMode() {
 }
 
 /**
- * [NOT-34] Settings Mode
+ * [NOT-40] Settings Mode - Shows Gemini Nano download status and settings
  */
 async function renderSettingsMode() {
   currentMode = 'settings';
   navigateToView('settings-mode');
+
+  // [NOT-40] Load and display Gemini Nano status
+  await updateGeminiStatusDisplay();
+
+  // [NOT-40] Start polling for status updates if downloading
+  startGeminiStatusPolling();
+}
+
+/**
+ * [NOT-40] Update the Gemini Nano status display in settings
+ */
+async function updateGeminiStatusDisplay() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'GET_GEMINI_STATUS' });
+    if (!response.success) {
+      error('[NOT-40] Failed to get Gemini status:', response.error);
+      return;
+    }
+
+    const status = response.status;
+    log('[NOT-40] Gemini status:', status);
+
+    const settingsContainer = document.getElementById('settings-mode');
+    const statusSection = settingsContainer.querySelector('.gemini-status-section') ||
+                          createGeminiStatusSection();
+
+    if (!settingsContainer.querySelector('.gemini-status-section')) {
+      // Clear placeholder and add status section
+      const emptyState = settingsContainer.querySelector('.empty-state');
+      if (emptyState) emptyState.remove();
+      settingsContainer.appendChild(statusSection);
+    }
+
+    updateStatusUI(statusSection, status);
+  } catch (error) {
+    error('[NOT-40] Error updating Gemini status:', error);
+  }
+}
+
+/**
+ * [NOT-40] Create the Gemini status section UI
+ * @private
+ */
+function createGeminiStatusSection() {
+  const section = document.createElement('div');
+  section.className = 'gemini-status-section';
+  section.innerHTML = `
+    <div class="settings-header">
+      <h2>AI Synthesis (Gemini Nano)</h2>
+      <p class="settings-description">On-device AI for generating insights from your notes</p>
+    </div>
+
+    <div class="status-card">
+      <div class="status-header">
+        <div class="status-icon"></div>
+        <div class="status-info">
+          <div class="status-title"></div>
+          <div class="status-message"></div>
+        </div>
+      </div>
+      <div class="status-progress hidden">
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+        <div class="progress-text"></div>
+      </div>
+      <div class="status-actions hidden">
+        <button id="initialize-gemini-button" class="primary-button">
+          Download Gemini Nano
+        </button>
+      </div>
+      <div class="status-error hidden">
+        <div class="error-message"></div>
+      </div>
+    </div>
+
+    <div class="settings-info">
+      <h3>System Requirements</h3>
+      <ul>
+        <li>Chrome 138+ (stable release)</li>
+        <li>22 GB free storage</li>
+        <li>16 GB RAM + 4 cores, OR 4 GB VRAM GPU</li>
+        <li>Windows 10+, macOS 13+, Linux, or ChromeOS</li>
+      </ul>
+    </div>
+  `;
+
+  // Wire up the initialize button
+  const initButton = section.querySelector('#initialize-gemini-button');
+  if (initButton) {
+    initButton.addEventListener('click', handleInitializeGemini);
+  }
+
+  return section;
+}
+
+/**
+ * [NOT-40] Update the status UI based on current state
+ * @private
+ */
+function updateStatusUI(section, status) {
+  const statusIcon = section.querySelector('.status-icon');
+  const statusTitle = section.querySelector('.status-title');
+  const statusMessage = section.querySelector('.status-message');
+  const statusProgress = section.querySelector('.status-progress');
+  const progressFill = section.querySelector('.progress-fill');
+  const progressText = section.querySelector('.progress-text');
+  const statusActions = section.querySelector('.status-actions');
+  const statusError = section.querySelector('.status-error');
+  const errorMessage = section.querySelector('.error-message');
+
+  // Hide all optional elements by default
+  statusProgress.classList.add('hidden');
+  statusActions.classList.add('hidden');
+  statusError.classList.add('hidden');
+
+  switch (status.status) {
+    case 'ready':
+      statusIcon.textContent = '✅';
+      statusTitle.textContent = 'Ready';
+      statusMessage.textContent = 'Gemini Nano is installed and ready to synthesize your notes.';
+      break;
+
+    case 'downloading':
+      statusIcon.textContent = '📥';
+      statusTitle.textContent = 'Downloading...';
+      statusMessage.textContent = 'Gemini Nano is being downloaded. This may take a few minutes.';
+      statusProgress.classList.remove('hidden');
+      const percentage = Math.round(status.progress * 100);
+      progressFill.style.width = `${percentage}%`;
+      progressText.textContent = `${percentage}% complete`;
+      break;
+
+    case 'checking':
+      statusIcon.textContent = '🔍';
+      statusTitle.textContent = 'Checking...';
+      statusMessage.textContent = 'Checking if Gemini Nano is available on your system.';
+      break;
+
+    case 'unavailable':
+      statusIcon.textContent = '⚠️';
+      statusTitle.textContent = 'Not Available';
+      statusMessage.textContent = 'Gemini Nano is not available on this system.';
+      statusError.classList.remove('hidden');
+      errorMessage.textContent = status.error || 'System does not meet requirements.';
+      break;
+
+    case 'error':
+      statusIcon.textContent = '❌';
+      statusTitle.textContent = 'Error';
+      statusMessage.textContent = 'Failed to initialize Gemini Nano.';
+      statusError.classList.remove('hidden');
+      errorMessage.textContent = status.error || 'Unknown error occurred.';
+      statusActions.classList.remove('hidden');
+      break;
+
+    case 'unknown':
+    default:
+      statusIcon.textContent = '⏳';
+      statusTitle.textContent = 'Unknown';
+      statusMessage.textContent = 'Gemini Nano status has not been checked yet.';
+      statusActions.classList.remove('hidden');
+      break;
+  }
+}
+
+/**
+ * [NOT-40] Handle Initialize Gemini button click
+ */
+async function handleInitializeGemini() {
+  const button = document.getElementById('initialize-gemini-button');
+  if (!button) return;
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Initializing...';
+
+  try {
+    log('[NOT-40] Manually triggering Gemini Nano initialization...');
+    const response = await chrome.runtime.sendMessage({ action: 'INITIALIZE_GEMINI' });
+
+    if (!response.success) {
+      throw new Error(response.error || 'Initialization failed');
+    }
+
+    log('[NOT-40] Gemini Nano initialization triggered successfully');
+    await updateGeminiStatusDisplay();
+
+  } catch (error) {
+    error('[NOT-40] Failed to initialize Gemini Nano:', error);
+    alert(`Failed to initialize Gemini Nano: ${error.message}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+/**
+ * [NOT-40] Start polling for Gemini status updates
+ * Polls every 2 seconds while downloading
+ * @private
+ */
+let geminiStatusPollInterval = null;
+
+function startGeminiStatusPolling() {
+  // Clear any existing interval
+  if (geminiStatusPollInterval) {
+    clearInterval(geminiStatusPollInterval);
+  }
+
+  // Poll every 2 seconds
+  geminiStatusPollInterval = setInterval(async () => {
+    // Only poll if we're still on settings page
+    if (currentMode !== 'settings') {
+      clearInterval(geminiStatusPollInterval);
+      geminiStatusPollInterval = null;
+      return;
+    }
+
+    await updateGeminiStatusDisplay();
+  }, 2000);
 }
 
 /**

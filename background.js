@@ -12,8 +12,30 @@ vectorService.init().catch(error => {
   console.error('❌ [NOT-38] Failed to initialize VectorService:', error);
 });
 
+// [NOT-40] Gemini Nano download state
+let geminiDownloadState = {
+  status: 'unknown', // 'unknown', 'checking', 'downloading', 'ready', 'unavailable', 'error'
+  progress: 0,
+  error: null
+};
+
+// [NOT-38] Keep-Alive: Long-lived port to prevent SW timeout during long operations
+let keepAlivePort = null;
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'keepalive') {
+    console.log('🔌 [NOT-38] Keep-alive port connected');
+    keepAlivePort = port;
+
+    port.onDisconnect.addListener(() => {
+      console.log('🔌 [NOT-38] Keep-alive port disconnected');
+      keepAlivePort = null;
+    });
+  }
+});
+
 // Create context menu on installation
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('📦 Extension installed, creating context menu...');
 
   // Create context menu item for capturing text
@@ -38,7 +60,106 @@ chrome.runtime.onInstalled.addListener(async () => {
   });
 
   console.log('✅ Context menu created');
+
+  // [NOT-40] Trigger Gemini Nano download on first install
+  if (details.reason === 'install') {
+    console.log('🆕 [NOT-40] First install detected - initiating Gemini Nano download...');
+    initializeGeminiNano();
+  }
 });
+
+/**
+ * [NOT-40] Initialize Gemini Nano and trigger model download
+ * Checks availability and creates a session to trigger download if needed
+ */
+async function initializeGeminiNano() {
+  try {
+    geminiDownloadState.status = 'checking';
+    console.log('🔍 [NOT-40] Checking Gemini Nano availability...');
+
+    // Update storage so settings page can show status
+    await chrome.storage.local.set({ geminiDownloadState });
+
+    // Check if Summarizer API exists
+    if (!self.ai || !self.ai.summarizer) {
+      console.warn('⚠️  [NOT-40] Summarizer API not available on this system');
+      geminiDownloadState = {
+        status: 'unavailable',
+        progress: 0,
+        error: 'Summarizer API not found. Requires Chrome 138+ with compatible hardware.'
+      };
+      await chrome.storage.local.set({ geminiDownloadState });
+      return;
+    }
+
+    // Check availability status
+    const capabilities = await self.ai.summarizer.capabilities();
+    console.log('📊 [NOT-40] Summarizer capabilities:', capabilities);
+
+    if (capabilities.available === 'no') {
+      console.warn('⚠️  [NOT-40] Gemini Nano not available on this device');
+      geminiDownloadState = {
+        status: 'unavailable',
+        progress: 0,
+        error: 'Device does not meet requirements for Gemini Nano (need 22GB storage, 16GB RAM or 4GB VRAM GPU)'
+      };
+      await chrome.storage.local.set({ geminiDownloadState });
+      return;
+    }
+
+    if (capabilities.available === 'readily') {
+      console.log('✅ [NOT-40] Gemini Nano already downloaded and ready');
+      geminiDownloadState = {
+        status: 'ready',
+        progress: 1,
+        error: null
+      };
+      await chrome.storage.local.set({ geminiDownloadState });
+      return;
+    }
+
+    // If we reach here, status is 'after-download' - trigger download
+    console.log('📥 [NOT-40] Gemini Nano needs download - creating session to trigger...');
+    geminiDownloadState.status = 'downloading';
+    geminiDownloadState.progress = 0;
+    await chrome.storage.local.set({ geminiDownloadState });
+
+    // Create a summarizer session with progress monitoring
+    const summarizer = await self.ai.summarizer.create({
+      type: 'key-points',
+      monitor(m) {
+        m.addEventListener('downloadprogress', async (e) => {
+          const progress = e.loaded / e.total;
+          geminiDownloadState.progress = progress;
+          console.log(`📥 [NOT-40] Download progress: ${Math.round(progress * 100)}%`);
+
+          // Update storage so settings page can show progress
+          await chrome.storage.local.set({ geminiDownloadState });
+        });
+      }
+    });
+
+    console.log('✅ [NOT-40] Gemini Nano download complete');
+    geminiDownloadState = {
+      status: 'ready',
+      progress: 1,
+      error: null
+    };
+    await chrome.storage.local.set({ geminiDownloadState });
+
+    // Clean up the session
+    await summarizer.destroy();
+
+  } catch (error) {
+    console.error('❌ [NOT-40] Failed to initialize Gemini Nano:', error);
+    geminiDownloadState = {
+      status: 'error',
+      progress: 0,
+      error: error.message || 'Unknown error during initialization'
+    };
+    await chrome.storage.local.set({ geminiDownloadState });
+  }
+}
 
 // [NOT-20] [NOT-27] Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -252,6 +373,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
   }
 
+  // [NOT-40] Handle GET_GEMINI_STATUS requests from settings page
+  if (message.action === 'GET_GEMINI_STATUS') {
+    console.log('📊 [NOT-40] GET_GEMINI_STATUS request received');
+    sendResponse({ success: true, status: geminiDownloadState });
+    return true;
+  }
+
+  // [NOT-40] Handle INITIALIZE_GEMINI requests from settings page
+  if (message.action === 'INITIALIZE_GEMINI') {
+    console.log('🔄 [NOT-40] INITIALIZE_GEMINI request received');
+
+    (async () => {
+      try {
+        await initializeGeminiNano();
+        sendResponse({ success: true, status: geminiDownloadState });
+      } catch (error) {
+        console.error('❌ [NOT-40] Manual initialization failed:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+
+    return true; // Keep message channel open for async response
+  }
+
   // [NOT-38] Handle INDEX_NOTE requests from panel
   if (message.action === 'INDEX_NOTE') {
     console.log('🔍 [NOT-38] INDEX_NOTE request received');
@@ -290,9 +435,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Search notes asynchronously
     (async () => {
       try {
-        const results = await vectorService.search(message.query, message.limit || 10);
-        console.log(`✅ [NOT-38] Search complete: ${results.length} results`);
-        sendResponse({ success: true, results: results });
+        const searchResults = await vectorService.search(message.query, message.limit || 10);
+
+        // Map results to expected format: { note, similarity }
+        // vectorService returns { id, score, document }
+        const formattedResults = searchResults.map(result => ({
+          note: result.document, // The document contains the note fields
+          similarity: result.score // Map score to similarity (0-1 range)
+        }));
+
+        console.log(`✅ [NOT-38] Search complete: ${formattedResults.length} results`);
+        sendResponse({ success: true, results: formattedResults });
       } catch (error) {
         console.error('❌ [NOT-38] Search failed:', error);
         sendResponse({ success: false, error: error.message });
@@ -306,17 +459,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'REINDEX_ALL') {
     console.log('🔄 [NOT-38] REINDEX_ALL request received');
 
-    if (!message.getAllNotesFn) {
-      console.error('❌ [NOT-38] No getAllNotesFn provided');
-      sendResponse({ success: false, error: 'No getAllNotesFn provided' });
-      return true;
-    }
-
     // Re-index all notes asynchronously
     (async () => {
       try {
-        // The function reference won't work across contexts, so we'll need
-        // the panel to send all notes instead
         if (!message.allNotes) {
           sendResponse({ success: false, error: 'Please provide allNotes array' });
           return;
