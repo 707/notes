@@ -2032,9 +2032,259 @@ async function handleContextPillClick() {
 /**
  * [NOT-34] AI Chat Mode
  */
+/**
+ * [NOT-46] AI Chat Mode - Renders the chat interface
+ * Loads chat history, initializes AI harness, and sets up event listeners
+ */
 async function renderAIChatMode() {
   currentMode = 'ai-chat';
   navigateToView('ai-chat-mode');
+
+  // Get DOM elements
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput = document.getElementById('chat-input');
+  const sendButton = document.getElementById('send-chat-button');
+  const clearButton = document.getElementById('clear-chat-button');
+  const modelSelector = document.getElementById('chat-model-selector');
+  const emptyState = document.getElementById('chat-empty-state');
+
+  if (!chatMessages || !chatInput || !sendButton) {
+    error('[NOT-46] Chat DOM elements not found');
+    return;
+  }
+
+  // State for current chat
+  let currentChatId = null;
+  let isStreaming = false;
+
+  /**
+   * Load or create chat session
+   */
+  async function loadChat() {
+    try {
+      const latestChat = await window.database.getLatestChat();
+
+      if (latestChat) {
+        currentChatId = latestChat.id;
+        log('[NOT-46] Loaded existing chat:', currentChatId);
+
+        // Load message history
+        const messages = await window.database.getChatHistory(currentChatId);
+
+        // Clear messages area
+        chatMessages.innerHTML = '';
+
+        if (messages.length > 0) {
+          emptyState.classList.add('hidden');
+
+          // Render each message
+          messages.forEach(msg => {
+            renderMessage(msg.role, msg.content, false);
+          });
+
+          // Scroll to bottom
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        } else {
+          emptyState.classList.remove('hidden');
+        }
+
+        // Set model selector
+        if (latestChat.modelId) {
+          modelSelector.value = latestChat.modelId;
+        }
+      } else {
+        // Create new chat
+        const modelId = modelSelector.value;
+        currentChatId = await window.database.createChat('New Chat', modelId);
+        log('[NOT-46] Created new chat:', currentChatId);
+        emptyState.classList.remove('hidden');
+      }
+    } catch (error) {
+      error('[NOT-46] Failed to load chat:', error);
+    }
+  }
+
+  /**
+   * Render a message bubble in the chat
+   */
+  function renderMessage(role, content, animate = true) {
+    emptyState.classList.add('hidden');
+
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble chat-bubble-${role}`;
+    if (animate) {
+      bubble.style.opacity = '0';
+    }
+
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-bubble-avatar';
+    avatar.textContent = role === 'user' ? 'U' : '✨';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'chat-bubble-content';
+    contentDiv.textContent = content;
+
+    bubble.appendChild(avatar);
+    bubble.appendChild(contentDiv);
+    chatMessages.appendChild(bubble);
+
+    // Animate in
+    if (animate) {
+      requestAnimationFrame(() => {
+        bubble.style.opacity = '1';
+      });
+    }
+
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    return contentDiv;
+  }
+
+  /**
+   * Send a message to the AI
+   */
+  async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text || isStreaming) return;
+
+    // Disable input
+    chatInput.disabled = true;
+    sendButton.disabled = true;
+    sendButton.classList.add('loading');
+    isStreaming = true;
+
+    try {
+      // Render user message
+      renderMessage('user', text);
+      await window.database.addMessage(currentChatId, 'user', text);
+
+      // Clear input
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+
+      // Get message history for context
+      const messages = await window.database.getChatHistory(currentChatId);
+      const messageHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
+      // Create AI message bubble with streaming cursor
+      const aiContentDiv = renderMessage('assistant', '');
+      const cursor = document.createElement('span');
+      cursor.className = 'streaming-cursor';
+      aiContentDiv.appendChild(cursor);
+
+      let fullResponse = '';
+
+      // Initialize harness
+      await window.aiHarness.initialize('openrouter');
+
+      // Send message with streaming
+      await window.aiHarness.sendMessage(
+        text,
+        {
+          messages: messageHistory.slice(0, -1), // Don't include the message we just added
+          modelId: modelSelector.value
+        },
+        // onChunk
+        (chunk) => {
+          fullResponse += chunk;
+          aiContentDiv.textContent = fullResponse;
+          aiContentDiv.appendChild(cursor); // Re-add cursor after text update
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        },
+        // onComplete
+        async () => {
+          cursor.remove();
+          await window.database.addMessage(currentChatId, 'assistant', fullResponse);
+          log('[NOT-46] Message sent and saved');
+          isStreaming = false;
+          chatInput.disabled = false;
+          sendButton.disabled = false;
+          sendButton.classList.remove('loading');
+          chatInput.focus();
+        },
+        // onError
+        (error) => {
+          cursor.remove();
+          aiContentDiv.textContent = `Error: ${error.message}`;
+          aiContentDiv.style.color = 'var(--color-error)';
+          error('[NOT-46] Chat error:', error);
+          isStreaming = false;
+          chatInput.disabled = false;
+          sendButton.disabled = false;
+          sendButton.classList.remove('loading');
+        }
+      );
+    } catch (error) {
+      error('[NOT-46] Failed to send message:', error);
+      isStreaming = false;
+      chatInput.disabled = false;
+      sendButton.disabled = false;
+      sendButton.classList.remove('loading');
+    }
+  }
+
+  /**
+   * Clear chat history
+   */
+  async function clearChat() {
+    if (!currentChatId) return;
+
+    const confirmed = confirm('Clear all messages in this chat?');
+    if (!confirmed) return;
+
+    try {
+      await window.database.deleteChat(currentChatId);
+
+      // Create new chat
+      const modelId = modelSelector.value;
+      currentChatId = await window.database.createChat('New Chat', modelId);
+
+      // Clear UI
+      chatMessages.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      chatMessages.appendChild(emptyState);
+
+      log('[NOT-46] Chat cleared');
+    } catch (error) {
+      error('[NOT-46] Failed to clear chat:', error);
+    }
+  }
+
+  /**
+   * Handle input changes
+   */
+  function handleInputChange() {
+    const hasText = chatInput.value.trim().length > 0;
+    sendButton.disabled = !hasText || isStreaming;
+
+    // Auto-resize textarea
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+  }
+
+  // Set up event listeners
+  sendButton.addEventListener('click', sendMessage);
+
+  chatInput.addEventListener('input', handleInputChange);
+
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  clearButton.addEventListener('click', clearChat);
+
+  // Load chat on mount
+  await loadChat();
+
+  // Focus input
+  chatInput.focus();
 }
 
 /**
@@ -2044,11 +2294,160 @@ async function renderSettingsMode() {
   currentMode = 'settings';
   navigateToView('settings-mode');
 
+  // [NOT-46] Set up OpenRouter API key handlers
+  await setupOpenRouterSettings();
+
   // [NOT-40] Load and display Gemini Nano status
   await updateGeminiStatusDisplay();
 
   // [NOT-40] Start polling for status updates if downloading
   startGeminiStatusPolling();
+}
+
+/**
+ * [NOT-46] Set up OpenRouter API key settings
+ * Loads saved key, sets up event handlers for save/test/visibility toggle
+ */
+async function setupOpenRouterSettings() {
+  const apiKeyInput = document.getElementById('openrouter-api-key');
+  const toggleVisibilityButton = document.getElementById('toggle-api-key-visibility');
+  const saveButton = document.getElementById('save-settings-button');
+  const testButton = document.getElementById('test-api-key-button');
+  const statusDiv = document.getElementById('settings-status');
+
+  if (!apiKeyInput || !saveButton || !testButton || !statusDiv) {
+    error('[NOT-46] Settings DOM elements not found');
+    return;
+  }
+
+  /**
+   * Show status message
+   */
+  function showStatus(message, type = 'info') {
+    statusDiv.textContent = message;
+    statusDiv.className = `settings-status ${type}`;
+    statusDiv.classList.remove('hidden');
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      statusDiv.classList.add('hidden');
+    }, 5000);
+  }
+
+  /**
+   * Load saved API key
+   */
+  async function loadApiKey() {
+    try {
+      const { openRouterApiKey } = await chrome.storage.local.get('openRouterApiKey');
+      if (openRouterApiKey) {
+        apiKeyInput.value = openRouterApiKey;
+        log('[NOT-46] Loaded OpenRouter API key');
+      }
+    } catch (error) {
+      error('[NOT-46] Failed to load API key:', error);
+    }
+  }
+
+  /**
+   * Save API key
+   */
+  async function saveApiKey() {
+    const apiKey = apiKeyInput.value.trim();
+
+    if (!apiKey) {
+      showStatus('Please enter an API key', 'error');
+      return;
+    }
+
+    saveButton.disabled = true;
+
+    try {
+      await chrome.storage.local.set({ openRouterApiKey: apiKey });
+      showStatus('API key saved successfully!', 'success');
+      log('[NOT-46] API key saved');
+    } catch (error) {
+      showStatus('Failed to save API key', 'error');
+      error('[NOT-46] Failed to save API key:', error);
+    } finally {
+      saveButton.disabled = false;
+    }
+  }
+
+  /**
+   * Test API key
+   */
+  async function testApiKey() {
+    const apiKey = apiKeyInput.value.trim();
+
+    if (!apiKey) {
+      showStatus('Please enter an API key first', 'error');
+      return;
+    }
+
+    testButton.disabled = true;
+    testButton.textContent = 'Testing...';
+
+    try {
+      // Save key temporarily for testing
+      await chrome.storage.local.set({ openRouterApiKey: apiKey });
+
+      // Initialize and test
+      await window.aiHarness.initialize('openrouter');
+      const isValid = await window.aiHarness.testProvider();
+
+      if (isValid) {
+        showStatus('✅ API key is valid!', 'success');
+      } else {
+        showStatus('❌ API key is invalid or connection failed', 'error');
+      }
+    } catch (error) {
+      showStatus('❌ Test failed: ' + error.message, 'error');
+      error('[NOT-46] API key test failed:', error);
+    } finally {
+      testButton.disabled = false;
+      testButton.textContent = 'Test Connection';
+    }
+  }
+
+  /**
+   * Toggle API key visibility
+   */
+  function toggleVisibility() {
+    if (apiKeyInput.type === 'password') {
+      apiKeyInput.type = 'text';
+      toggleVisibilityButton.textContent = '🙈';
+    } else {
+      apiKeyInput.type = 'password';
+      toggleVisibilityButton.textContent = '👁️';
+    }
+  }
+
+  // Set up event listeners (remove old ones first to avoid duplicates)
+  saveButton.removeEventListener('click', saveApiKey);
+  saveButton.addEventListener('click', saveApiKey);
+
+  testButton.removeEventListener('click', testApiKey);
+  testButton.addEventListener('click', testApiKey);
+
+  if (toggleVisibilityButton) {
+    toggleVisibilityButton.removeEventListener('click', toggleVisibility);
+    toggleVisibilityButton.addEventListener('click', toggleVisibility);
+  }
+
+  // Keyboard shortcut: Cmd/Ctrl + Enter to save
+  apiKeyInput.removeEventListener('keydown', handleKeydown);
+  apiKeyInput.addEventListener('keydown', handleKeydown);
+
+  function handleKeydown(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      saveApiKey();
+    }
+  }
+
+  // Load existing API key
+  await loadApiKey();
 }
 
 /**

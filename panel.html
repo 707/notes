@@ -354,25 +354,96 @@
       </div>
     </div>
 
-    <!-- [NOT-34] AI Chat Mode (Placeholder) -->
-    <div id="ai-chat-mode" class="placeholder-view hidden">
-      <div class="empty-state">
-        <div class="empty-icon">
-          <svg class="icon icon-xxl"><use href="#icon-sparkle"></use></svg>
+    <!-- [NOT-46] AI Chat Mode -->
+    <div id="ai-chat-mode" class="chat-mode hidden">
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <select id="chat-model-selector" class="chat-model-selector" aria-label="Select AI model">
+          <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+          <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
+          <option value="google/gemini-pro">Gemini Pro</option>
+          <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
+          <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
+        </select>
+        <button id="clear-chat-button" class="clear-chat-button" title="Clear chat history" aria-label="Clear chat history">
+          <svg class="icon icon-sm"><use href="#icon-trash"></use></svg>
+        </button>
+      </div>
+
+      <!-- Chat Messages -->
+      <div id="chat-messages" class="chat-messages">
+        <!-- Empty state -->
+        <div id="chat-empty-state" class="chat-empty-state">
+          <div class="empty-icon">
+            <svg class="icon icon-xxl"><use href="#icon-sparkle"></use></svg>
+          </div>
+          <h2>AI Assistant</h2>
+          <p>Ask me anything about your notes, get summaries, or have a conversation.</p>
         </div>
-        <h2>AI Assistant</h2>
-        <p>Coming soon...</p>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="chat-input-area">
+        <textarea
+          id="chat-input"
+          class="chat-input"
+          placeholder="Ask me anything..."
+          rows="1"
+          aria-label="Chat message input"
+        ></textarea>
+        <button id="send-chat-button" class="send-chat-button" title="Send message" aria-label="Send message" disabled>
+          <svg class="icon icon-sm"><use href="#icon-arrow-right"></use></svg>
+        </button>
       </div>
     </div>
 
-    <!-- [NOT-34] Settings Mode (Placeholder) -->
-    <div id="settings-mode" class="placeholder-view hidden">
-      <div class="empty-state">
-        <div class="empty-icon">
-          <svg class="icon icon-xxl"><use href="#icon-settings"></use></svg>
-        </div>
+    <!-- [NOT-46] Settings Mode -->
+    <div id="settings-mode" class="settings-mode hidden">
+      <div class="settings-header">
         <h2>Settings</h2>
-        <p>Coming soon...</p>
+      </div>
+
+      <div class="settings-content">
+        <!-- AI Settings Section -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">AI Assistant</h3>
+          <p class="settings-section-description">Configure your AI provider and API credentials.</p>
+
+          <div class="settings-field">
+            <label for="openrouter-api-key" class="settings-label">
+              OpenRouter API Key
+              <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" class="settings-link">
+                Get your key
+              </a>
+            </label>
+            <div class="settings-input-wrapper">
+              <input
+                type="password"
+                id="openrouter-api-key"
+                class="settings-input"
+                placeholder="sk-or-v1-..."
+                autocomplete="off"
+                aria-label="OpenRouter API Key"
+              >
+              <button id="toggle-api-key-visibility" class="settings-input-icon" type="button" title="Toggle visibility" aria-label="Toggle API key visibility">
+                👁️
+              </button>
+            </div>
+            <p class="settings-hint">Your API key is stored locally and never leaves your device.</p>
+          </div>
+
+          <div class="settings-actions">
+            <button id="save-settings-button" class="settings-button primary">
+              <svg class="icon icon-sm"><use href="#icon-check"></use></svg>
+              Save Changes
+            </button>
+            <button id="test-api-key-button" class="settings-button secondary">
+              Test Connection
+            </button>
+          </div>
+
+          <div id="settings-status" class="settings-status hidden"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -464,6 +535,9 @@
   <script src="utils.js"></script>
   <!-- [NOT-40] Gemini Service for AI synthesis -->
   <script src="gemini-service.js"></script>
+  <!-- [NOT-46] AI Harness for Chat -->
+  <script src="ai-harness/providers/openrouter.js"></script>
+  <script src="ai-harness/harness.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>

@@ -1,5 +1,11 @@
 // Database Module - IndexedDB with Dexie.js
+// Note: This file uses global Dexie - Service Worker must use storage-service.js instead
 console.log('💾 Database module loading...');
+
+// Dexie must be loaded via script tag (only works in DOM context)
+if (typeof Dexie === 'undefined') {
+  throw new Error('Dexie not loaded - ensure dexie.js script is loaded before database.js');
+}
 
 // Initialize Dexie
 const db = new Dexie('KnowledgeClipperDB');
@@ -65,7 +71,58 @@ db.version(5).stores({
   ignoredConnections: '++id, noteId, contextUrl' // Store user feedback about irrelevant semantic matches
 });
 
+// [NOT-38/Refactor] Version 6: Move vector index storage to Dexie
+db.version(6).stores({
+  notes: 'id, timestamp, *tags, readLater, starred', // No index changes
+  metadata: 'key',
+  ignoredConnections: '++id, noteId, contextUrl',
+  oramaIndex: '++id, timestamp' // Store serialized Orama index blobs
+});
+
+// [NOT-46] Version 7: Add chat tables for AI assistant
+db.version(7).stores({
+  notes: 'id, timestamp, *tags, readLater, starred', // No index changes
+  metadata: 'key',
+  ignoredConnections: '++id, noteId, contextUrl',
+  oramaIndex: '++id, timestamp',
+  chats: '++id, createdAt, updatedAt', // Chat sessions
+  messages: '++id, chatId, timestamp' // Messages within chats (chatId indexed for efficient queries)
+});
+
 console.log('✅ Database schema defined');
+
+/**
+ * [NOT-38/Refactor] Save Orama index to Dexie
+ * @param {Object} serializedIndex - The serialized Orama index
+ */
+async function saveOramaIndex(serializedIndex) {
+  try {
+    // We only keep the latest index, so clear old ones first
+    await db.oramaIndex.clear();
+    await db.oramaIndex.add({
+      timestamp: Date.now(),
+      data: serializedIndex
+    });
+    console.log('💾 [NOT-38] Orama index saved to Dexie');
+  } catch (error) {
+    console.error('❌ Error saving Orama index to Dexie:', error);
+    throw error;
+  }
+}
+
+/**
+ * [NOT-38/Refactor] Load Orama index from Dexie
+ * @returns {Promise<Object|null>} - Serialized index or null
+ */
+async function loadOramaIndex() {
+  try {
+    const latest = await db.oramaIndex.orderBy('timestamp').reverse().first();
+    return latest ? latest.data : null;
+  } catch (error) {
+    console.error('❌ Error loading Orama index from Dexie:', error);
+    return null;
+  }
+}
 
 /**
  * Data Migration - Move existing notes from chrome.storage.local to IndexedDB
@@ -283,6 +340,105 @@ async function getIgnoredConnectionsForContext(contextUrl) {
   }
 }
 
+/**
+ * [NOT-46] Create a new chat session
+ * @param {string} title - The title of the chat
+ * @param {string} modelId - The model identifier (e.g., "anthropic/claude-3.5-sonnet")
+ * @returns {Promise<number>} - Returns the chat ID
+ */
+async function createChat(title, modelId) {
+  try {
+    const now = Date.now();
+    const id = await db.chats.add({
+      title: title || 'New Chat',
+      modelId: modelId || 'anthropic/claude-3.5-sonnet',
+      createdAt: now,
+      updatedAt: now
+    });
+    console.log('✅ [NOT-46] Chat created:', id);
+    return id;
+  } catch (error) {
+    console.error('❌ [NOT-46] Error creating chat:', error);
+    throw error;
+  }
+}
+
+/**
+ * [NOT-46] Add a message to a chat
+ * @param {number} chatId - The chat ID
+ * @param {string} role - Message role ("user" or "assistant")
+ * @param {string} content - Message content
+ * @returns {Promise<number>} - Returns the message ID
+ */
+async function addMessage(chatId, role, content) {
+  try {
+    const id = await db.messages.add({
+      chatId,
+      role,
+      content,
+      timestamp: Date.now()
+    });
+
+    // Update chat's updatedAt timestamp
+    await db.chats.update(chatId, { updatedAt: Date.now() });
+
+    console.log('✅ [NOT-46] Message added to chat:', chatId);
+    return id;
+  } catch (error) {
+    console.error('❌ [NOT-46] Error adding message:', error);
+    throw error;
+  }
+}
+
+/**
+ * [NOT-46] Get all messages for a chat
+ * @param {number} chatId - The chat ID
+ * @returns {Promise<Array>} - Returns array of messages ordered by timestamp
+ */
+async function getChatHistory(chatId) {
+  try {
+    const messages = await db.messages
+      .where('chatId').equals(chatId)
+      .sortBy('timestamp');
+    return messages;
+  } catch (error) {
+    console.error('❌ [NOT-46] Error getting chat history:', error);
+    throw error;
+  }
+}
+
+/**
+ * [NOT-46] Get the most recent chat
+ * @returns {Promise<Object|null>} - Returns the most recent chat or null
+ */
+async function getLatestChat() {
+  try {
+    const chat = await db.chats.orderBy('updatedAt').reverse().first();
+    return chat || null;
+  } catch (error) {
+    console.error('❌ [NOT-46] Error getting latest chat:', error);
+    return null;
+  }
+}
+
+/**
+ * [NOT-46] Delete a chat and all its messages
+ * @param {number} chatId - The chat ID
+ * @returns {Promise<void>}
+ */
+async function deleteChat(chatId) {
+  try {
+    // Delete all messages in the chat
+    await db.messages.where('chatId').equals(chatId).delete();
+    // Delete the chat itself
+    await db.chats.delete(chatId);
+    console.log('✅ [NOT-46] Chat deleted:', chatId);
+  } catch (error) {
+    console.error('❌ [NOT-46] Error deleting chat:', error);
+    throw error;
+  }
+}
+
 // Export functions for use in panel.js
 // Note: pendingClipData remains in chrome.storage.local as it's temporary and cross-context
 window.database = {
@@ -297,7 +453,15 @@ window.database = {
   getNotesCount,
   addIgnoredConnection,
   isConnectionIgnored,
-  getIgnoredConnectionsForContext
+  getIgnoredConnectionsForContext,
+  saveOramaIndex,
+  loadOramaIndex,
+  // [NOT-46] Chat functions
+  createChat,
+  addMessage,
+  getChatHistory,
+  getLatestChat,
+  deleteChat
 };
 
 console.log('✅ Database module ready');
