@@ -2989,8 +2989,8 @@ async function renderHybridView(notesListEl) {
     }
 
     log(`📝 [NOT-39] [NOT-48] Rendered hybrid view: ${exactMatches.length} exact, ${semanticMatches.length} semantic`);
-  } catch (error) {
-    error('[NOT-39] Error rendering hybrid view:', error);
+  } catch (err) {
+    error('[NOT-39] [NOT-48] Error rendering hybrid view:', err);
   }
 }
 
@@ -3042,8 +3042,8 @@ async function handleRelatedNoteFeedback(noteId, cardElement) {
       }
     }, 200); // Match animation duration
 
-  } catch (error) {
-    error('[NOT-48] Error handling related note feedback:', error);
+  } catch (err) {
+    error('[NOT-48] Error handling related note feedback:', err);
 
     // Re-enable button on error
     const feedbackButton = cardElement.querySelector('.feedback-button');
