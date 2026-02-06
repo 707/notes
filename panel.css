@@ -863,27 +863,13 @@ body {
   background: var(--color-surface);
 }
 
-.chat-model-selector {
+/* [NOT-51] Chat Title - Replaces model selector for simplified UX */
+.chat-title {
   flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
   color: var(--color-text-primary);
-  font-family: var(--font-family);
-  font-size: var(--font-size-base);
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-
-.chat-model-selector:hover {
-  border-color: var(--color-border-medium);
-}
-
-.chat-model-selector:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: var(--focus-ring);
 }
 
 .clear-chat-button {
@@ -2831,6 +2817,30 @@ input:focus-visible,
 
 .settings-input::placeholder {
   color: var(--color-text-tertiary);
+}
+
+/* [NOT-51] Settings Select Dropdown */
+.settings-select {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.settings-select:hover {
+  border-color: var(--color-border-medium);
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
 }
 
 .settings-input-icon {

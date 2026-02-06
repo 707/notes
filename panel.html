@@ -356,11 +356,9 @@
 
     <!-- [NOT-46] AI Chat Mode -->
     <div id="ai-chat-mode" class="chat-mode hidden">
-      <!-- Chat Header -->
+      <!-- [NOT-51] Chat Header - Simplified (model selection moved to Settings) -->
       <div class="chat-header">
-        <select id="chat-model-selector" class="chat-model-selector" aria-label="Select AI model">
-          <option value="openrouter/auto">OpenRouter Auto (Free)</option>
-        </select>
+        <h2 class="chat-title">AI Assistant</h2>
         <button id="clear-chat-button" class="clear-chat-button" title="Clear chat history" aria-label="Clear chat history">
           <svg class="icon icon-sm"><use href="#icon-trash"></use></svg>
         </button>
@@ -404,6 +402,18 @@
         <div class="settings-section">
           <h3 class="settings-section-title">AI Assistant</h3>
           <p class="settings-section-description">Configure your AI provider and API credentials.</p>
+
+          <!-- [NOT-51] Model Preference Selection -->
+          <div class="settings-field">
+            <label for="preferred-model-selector" class="settings-label">
+              Preferred Model
+            </label>
+            <select id="preferred-model-selector" class="settings-select" aria-label="Select preferred AI model">
+              <option value="auto">Smart Auto (Recommended)</option>
+              <!-- Options will be populated by JavaScript -->
+            </select>
+            <p class="settings-hint">Smart Auto uses an intelligent fallback chain prioritized by context window size.</p>
+          </div>
 
           <div class="settings-field">
             <label for="openrouter-api-key" class="settings-label">
@@ -532,6 +542,7 @@
   <!-- [NOT-40] Gemini Service for AI synthesis -->
   <script src="gemini-service.js"></script>
   <!-- [NOT-46] AI Harness for Chat -->
+  <script src="ai-harness/free-models.js"></script>
   <script src="ai-harness/providers/openrouter.js"></script>
   <script src="ai-harness/harness.js"></script>
   <script src="panel.js"></script>

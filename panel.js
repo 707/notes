@@ -1,5 +1,19 @@
 // Knowledge Clipper - Side Panel Logic
 
+/**
+ * PANEL.JS - Main Orchestrator
+ * 
+ * [NAV] SECTIONS:
+ * @STATE       - Global state & Persistence
+ * @CORE_UTILS  - Sanitization, Dates, & UI Helpers
+ * @ROUTING     - Navigation & Mode Switching
+ * @CAPTURE     - Saving notes & Multi-image logic
+ * @LIBRARY     - List rendering, filtering, sorting
+ * @AI          - Chat, Contextual Recall & Synthesis
+ * @SETTINGS    - Config & API Keys
+ * @INIT        - Global Event Listeners & Boot
+ */
+
 // [NOT-34] Debug flag - set to false for production
 const DEBUG = true;
 const log = DEBUG ? console.log.bind(console) : () => {};
@@ -7,6 +21,10 @@ const warn = DEBUG ? console.warn.bind(console) : () => {};
 const error = console.error.bind(console); // Always log errors
 
 log('📱 Panel script loaded');
+
+// =============================================================================
+// @STATE - Global Variables & Persistence
+// =============================================================================
 
 // State
 let currentMode = null;
@@ -16,6 +34,70 @@ let filteredNotes = [];
 
 // [NOT-40] Gemini Nano availability state
 let geminiAvailable = false;
+
+// [NOT-33] Edit Mode State
+let isEditModeActive = false;
+let editModeNoteId = null;
+let editModeImages = [];
+
+// [NOT-33] Web Capture State
+let isWebCaptureListening = false;
+let currentImages = [];
+
+// [NOT-31] Filter & View State
+let filterState = {
+  search: '',
+  sort: 'newest',
+  tags: [],
+  readLater: false,
+  starred: false,
+  contextFilter: null
+};
+let isExpandedAll = false;
+let libraryListenersInitialized = false;
+
+// [NOT-39] Contextual Recall State
+let contextPillAnimated = false;
+let contextMatchType = null;
+let semanticMatches = [];
+
+// [NOT-22] Global TagInput instance for Capture Mode
+let captureTagInput = null;
+
+// [NOT-40] Gemini Status Polling
+let geminiStatusPollInterval = null;
+
+// Load persisted filter state
+async function loadFilterState() {
+  try {
+    const metadata = await window.database.db.metadata.get('filterState');
+    if (metadata && metadata.value) {
+      filterState = metadata.value;
+      // [NOT-31] Always reset context filter on load (page-specific, shouldn't persist)
+      filterState.contextFilter = null;
+      // [NOT-35] Ensure starred property exists (for backward compatibility)
+      if (filterState.starred === undefined) {
+        filterState.starred = false;
+      }
+      log('📂 Loaded persisted filter state:', filterState);
+    }
+  } catch (error) {
+    error('❌ Error loading filter state:', error);
+  }
+}
+
+// Save filter state
+async function saveFilterState() {
+  try {
+    await window.database.db.metadata.put({ key: 'filterState', value: filterState });
+  } catch (error) {
+    error('❌ Error saving filter state:', error);
+  }
+}
+
+// =============================================================================
+// @CORE_UTILS - Sanitization, Helpers, & Date Formatting
+// =============================================================================
 
 /**
  * [NOT-20] Sanitize HTML content using native DOMParser
@@ -363,6 +445,10 @@ async function reindexAllNotes() {
 // [NOT-38] Expose reindex function for manual use
 window.reindexAllNotes = reindexAllNotes;
 
+// =============================================================================
+// @ROUTING - Navigation & Mode Switching
+// =============================================================================
+
 /**
  * [NOT-31] [NOT-39] Check for Contextual Recall - show pill if notes exist for current page
  * Upgraded to include semantic matches via vector search
@@ -581,38 +667,107 @@ function navigateToView(viewId) {
 }
 
 /**
- * [NOT-31] Expand or collapse all note cards with proper UI updates
- * @param {boolean} expand - True to expand, false to collapse
+ * [NOT-31] [NOT-34] [NOT-39] Handle context pill click - toggle contextual recall filter or show hybrid view
+ * When activating: navigates to library (if needed), filters notes and auto-expands them
+ * For semantic/hybrid states: renders special hybrid view with sections
+ * When deactivating: clears the filter
  */
-function setAllNotesExpanded(expand) {
-  isExpandedAll = expand;
+async function handleContextPillClick() {
+  try {
+    const pillElement = document.getElementById('context-pill');
 
-  const noteCards = document.querySelectorAll('.note-card');
-  noteCards.forEach(card => {
-    if (expand) {
-      card.classList.add('expanded');
-      card.setAttribute('aria-expanded', 'true');
-    } else {
-      card.classList.remove('expanded');
-      card.setAttribute('aria-expanded', 'false');
-    }
-  });
+    // [NOT-34] If not in library mode, navigate to library first
+    if (currentMode !== 'library') {
+      // Set up the filter before navigating
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.url) return;
 
-  // Update expand button icon
-  const expandButton = document.getElementById('expand-all-button');
-  if (expandButton) {
-    const iconUse = expandButton.querySelector('use');
-    if (expand) {
-      iconUse?.setAttribute('href', '#icon-minimize');
-      expandButton.setAttribute('title', 'Collapse all notes');
-      expandButton.setAttribute('aria-label', 'Collapse all notes');
-    } else {
-      iconUse?.setAttribute('href', '#icon-maximize');
-      expandButton.setAttribute('title', 'Expand all notes');
-      expandButton.setAttribute('aria-label', 'Expand all notes');
+      const currentUrl = tab.url;
+
+      // [NOT-39] For semantic/hybrid states, just navigate and render hybrid view
+      if (contextMatchType === 'semantic' || contextMatchType === 'hybrid') {
+        pillElement?.classList.add('active');
+        await renderLibraryMode();
+        // Hybrid view will be rendered automatically by renderNotesList
+        return;
+      }
+
+      // Set filter based on match type for exact/domain
+      if (contextMatchType === 'exact') {
+        filterState.contextFilter = currentUrl;
+      } else if (contextMatchType === 'domain') {
+        const url = new URL(currentUrl);
+        filterState.contextFilter = url.hostname;
+      }
+
+      pillElement?.classList.add('active');
+
+      // Navigate to library with filter active
+      await renderLibraryMode();
+
+      // Auto-expand after navigation
+      setTimeout(() => setAllNotesExpanded(true), 0);
+
+      await saveFilterState();
+      return;
     }
+
+    // [NOT-41] Toggle filter state (when already in library)
+    // Check DOM active class instead of match type to determine if pill is active
+    if (pillElement?.classList.contains('active')) {
+      // Deactivate filter
+      filterState.contextFilter = null;
+      pillElement?.classList.remove('active');
+      setAllNotesExpanded(false);
+    } else {
+      // Activate filter
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.url) return;
+
+      const currentUrl = tab.url;
+
+      // [NOT-39] For semantic/hybrid states, set active and render hybrid view
+      if (contextMatchType === 'semantic' || contextMatchType === 'hybrid') {
+        pillElement?.classList.add('active');
+        // Hybrid view will be rendered automatically by renderNotesList
+        filterAndRenderNotes();
+        return;
+      }
+
+      // Set filter based on match type for exact/domain
+      if (contextMatchType === 'exact') {
+        filterState.contextFilter = currentUrl;
+      } else if (contextMatchType === 'domain') {
+        const url = new URL(currentUrl);
+        filterState.contextFilter = url.hostname;
+      }
+
+      pillElement?.classList.add('active');
+
+      // [NOT-36] Auto-expand notes when activating context filter
+      setAllNotesExpanded(true);
+    }
+
+    // Apply filter and re-render
+    filterAndRenderNotes();
+
+    // Auto-expand all notes after rendering if filter is active
+    if (filterState.contextFilter) {
+      setTimeout(() => setAllNotesExpanded(true), 0);
+    }
+
+    // Save filter state
+    await saveFilterState();
+  } catch (error) {
+    error('[NOT-31] [NOT-39] Error handling context pill click:', error);
   }
 }
+
+// =============================================================================
+// @CAPTURE - Saving notes & Multi-image logic
+// =============================================================================
+
+
 
 /**
  * [NOT-33] Handle file upload for multi-image support
@@ -967,35 +1122,7 @@ function renderImagePreviews(containerId, images, isEditMode = false) {
   log(`🖼️  [NOT-33] Rendered ${images.length} image preview(s) in ${containerId}`);
 }
 
-// Unified filter state
-let filterState = {
-  search: '',
-  sort: 'newest',
-  tags: [],
-  readLater: false, // [NOT-18] Read Later filter
-  starred: false, // [NOT-35] Starred filter
-  contextFilter: null // [NOT-31] Contextual Recall filter (stores URL or domain string)
-};
 
-// [NOT-16] Expand all state
-let isExpandedAll = false;
-
-// [NOT-16] Track if library event listeners have been set up
-let libraryListenersInitialized = false;
-
-// [NOT-31] Track if context pill animation has been shown (to prevent repeat animations)
-let contextPillAnimated = false;
-let contextMatchType = null; // 'exact', 'domain', 'semantic', or 'hybrid'
-
-// [NOT-39] Store semantic match results
-let semanticMatches = []; // Array of {note, similarity} objects for semantic matches
-
-// [NOT-33] Multi-image state
-let currentImages = []; // Array of {id, data, timestamp} objects for current note being created/edited
-let isWebCaptureListening = false; // Track if we're waiting for webpage image capture
-let editModeImages = []; // Separate array for edit mode to avoid conflicts
-let isEditModeActive = false; // Track if we're currently in edit mode
-let editModeNoteId = null; // Track which note is being edited
 
 /**
  * [NOT-22] TagInput Component - Pill-based tag input with autocomplete
@@ -1403,33 +1530,7 @@ class TagInput {
   }
 }
 
-// Load persisted filter state
-async function loadFilterState() {
-  try {
-    const metadata = await window.database.db.metadata.get('filterState');
-    if (metadata && metadata.value) {
-      filterState = metadata.value;
-      // [NOT-31] Always reset context filter on load (page-specific, shouldn't persist)
-      filterState.contextFilter = null;
-      // [NOT-35] Ensure starred property exists (for backward compatibility)
-      if (filterState.starred === undefined) {
-        filterState.starred = false;
-      }
-      log('📂 Loaded persisted filter state:', filterState);
-    }
-  } catch (error) {
-    error('❌ Error loading filter state:', error);
-  }
-}
 
-// Save filter state
-async function saveFilterState() {
-  try {
-    await window.database.db.metadata.put({ key: 'filterState', value: filterState });
-  } catch (error) {
-    error('❌ Error saving filter state:', error);
-  }
-}
 
 /**
  * [NOT-16] [NOT-27] Handle create note button click
@@ -1500,157 +1601,7 @@ async function handleCreateNote() {
   }
 }
 
-// Initialize on DOM load
-document.addEventListener('DOMContentLoaded', async () => {
-  log('🎯 Initializing panel...');
 
-  // [NOT-16] Set up create note button listener
-  const createNoteButton = document.getElementById('create-note-button');
-  if (createNoteButton) {
-    createNoteButton.addEventListener('click', handleCreateNote);
-  }
-
-  // [NOT-16] Set up capture mode event listeners (once)
-  const notesInput = document.getElementById('capture-notes');
-  const saveButton = document.getElementById('save-button');
-
-  // Keyboard shortcut (Cmd+Enter to save)
-  if (notesInput) {
-    notesInput.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        saveButton.click();
-      }
-    });
-  }
-
-  // Save button click handler
-  if (saveButton) {
-    saveButton.addEventListener('click', () => {
-      handleSaveClip(window.currentClipData || {});
-    });
-  }
-
-  // [NOT-33] Image upload button handler
-  const uploadImageButton = document.getElementById('upload-image-button');
-  const imageUploadInput = document.getElementById('image-upload-input');
-
-  if (uploadImageButton && imageUploadInput) {
-    uploadImageButton.addEventListener('click', () => {
-      imageUploadInput.click();
-    });
-
-    imageUploadInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files.length > 0) {
-        handleFileUpload(e.target.files, false);
-        // Reset input so same file can be selected again
-        e.target.value = '';
-      }
-    });
-  }
-
-  // [NOT-33] [NOT-36] Webpage image capture button handler - wrap to pass buttonId
-  const captureWebpageImageButton = document.getElementById('capture-webpage-image-button');
-  if (captureWebpageImageButton) {
-    captureWebpageImageButton.addEventListener('click', () => activateWebCaptureMode('capture-webpage-image-button'));
-  }
-
-  // [NOT-34] Navigation button handlers
-  const libraryButton = document.getElementById('library-button');
-  const aiButton = document.getElementById('ai-button');
-  const settingsButton = document.getElementById('settings-button');
-
-  if (libraryButton) {
-    libraryButton.addEventListener('click', renderLibraryMode);
-  }
-  if (aiButton) {
-    aiButton.addEventListener('click', renderAIChatMode);
-  }
-  if (settingsButton) {
-    settingsButton.addEventListener('click', renderSettingsMode);
-  }
-
-  // [NOT-31] Listen for tab changes to refresh contextual recall pill
-  chrome.tabs.onActivated.addListener(async () => {
-    if (currentMode === 'library') {
-      await checkContextualRecall();
-    }
-  });
-
-  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-    if (changeInfo.url && currentMode === 'library') {
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (activeTab && activeTab.id === tabId) {
-        await checkContextualRecall();
-      }
-    }
-  });
-
-  try {
-    // Run data migration (if needed)
-    await window.database.migrateFromChromeStorage();
-
-    // [NOT-38] Auto-reindex for semantic search on first run
-    await checkAndReindexIfNeeded();
-
-    // Load persisted filter state
-    await loadFilterState();
-
-    // Check for pending clip data from chrome.storage.local
-    const { pendingClipData } = await chrome.storage.local.get('pendingClipData');
-
-    if (pendingClipData) {
-      log('📋 Found pending clip data, rendering Capture Mode');
-      renderCaptureMode(pendingClipData);
-    } else {
-      log('⏳ No pending data yet, waiting for it or showing library...');
-
-      // Set up listener for when pendingClipData arrives
-      let timeoutId = setTimeout(() => {
-        log('📚 No clip data received, showing Library Mode');
-        renderLibraryMode();
-      }, 500); // Wait 500ms for data to arrive
-
-      // [NOT-36] Listen for storage changes (boot-time listener only for initial capture)
-      // Web capture listening mode is now handled by dedicated listener in activateWebCaptureMode
-      const listener = (changes, area) => {
-        if (area === 'local' && changes.pendingClipData && changes.pendingClipData.newValue) {
-          const newClipData = changes.pendingClipData.newValue;
-
-          // [NOT-36] Web capture mode is now handled by dedicated listener
-          // This boot-time listener only handles normal flow (new clip data rendering)
-          if (!isWebCaptureListening) {
-            log('📋 Pending clip data arrived, rendering Capture Mode');
-            clearTimeout(timeoutId);
-            chrome.storage.onChanged.removeListener(listener);
-            renderCaptureMode(newClipData);
-          }
-          // If in web capture listening mode, the dedicated listener will handle it
-        }
-      };
-
-      chrome.storage.onChanged.addListener(listener);
-    }
-
-    // [NOT-40] Check Gemini Nano availability for AI synthesis
-    try {
-      geminiAvailable = await window.geminiService.checkAvailability();
-      if (geminiAvailable) {
-        log('✅ [NOT-40] Gemini Nano is available for synthesis');
-      } else {
-        log('⚠️  [NOT-40] Gemini Nano is not available. Synthesis features will be disabled.');
-      }
-    } catch (error) {
-      error('❌ [NOT-40] Error checking Gemini availability:', error);
-      geminiAvailable = false;
-    }
-  } catch (error) {
-    error('❌ Error initializing panel:', error);
-  }
-});
-
-// [NOT-22] Global TagInput instance for Capture Mode
-let captureTagInput = null;
 
 /**
  * [NOT-16] Capture Mode - Supports both web clips and manual note creation
@@ -1932,761 +1883,9 @@ function handleToggleExpandAll() {
   setAllNotesExpanded(!isExpandedAll);
 }
 
-/**
- * [NOT-31] [NOT-34] [NOT-39] Handle context pill click - toggle contextual recall filter or show hybrid view
- * When activating: navigates to library (if needed), filters notes and auto-expands them
- * For semantic/hybrid states: renders special hybrid view with sections
- * When deactivating: clears the filter
- */
-async function handleContextPillClick() {
-  try {
-    const pillElement = document.getElementById('context-pill');
-
-    // [NOT-34] If not in library mode, navigate to library first
-    if (currentMode !== 'library') {
-      // Set up the filter before navigating
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab || !tab.url) return;
-
-      const currentUrl = tab.url;
-
-      // [NOT-39] For semantic/hybrid states, just navigate and render hybrid view
-      if (contextMatchType === 'semantic' || contextMatchType === 'hybrid') {
-        pillElement?.classList.add('active');
-        await renderLibraryMode();
-        // Hybrid view will be rendered automatically by renderNotesList
-        return;
-      }
-
-      // Set filter based on match type for exact/domain
-      if (contextMatchType === 'exact') {
-        filterState.contextFilter = currentUrl;
-      } else if (contextMatchType === 'domain') {
-        const url = new URL(currentUrl);
-        filterState.contextFilter = url.hostname;
-      }
-
-      pillElement?.classList.add('active');
-
-      // Navigate to library with filter active
-      await renderLibraryMode();
-
-      // Auto-expand after navigation
-      setTimeout(() => setAllNotesExpanded(true), 0);
-
-      await saveFilterState();
-      return;
-    }
-
-    // [NOT-41] Toggle filter state (when already in library)
-    // Check DOM active class instead of match type to determine if pill is active
-    if (pillElement?.classList.contains('active')) {
-      // Deactivate filter
-      filterState.contextFilter = null;
-      pillElement?.classList.remove('active');
-      setAllNotesExpanded(false);
-    } else {
-      // Activate filter
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab || !tab.url) return;
-
-      const currentUrl = tab.url;
-
-      // [NOT-39] For semantic/hybrid states, set active and render hybrid view
-      if (contextMatchType === 'semantic' || contextMatchType === 'hybrid') {
-        pillElement?.classList.add('active');
-        // Hybrid view will be rendered automatically by renderNotesList
-        filterAndRenderNotes();
-        return;
-      }
-
-      // Set filter based on match type for exact/domain
-      if (contextMatchType === 'exact') {
-        filterState.contextFilter = currentUrl;
-      } else if (contextMatchType === 'domain') {
-        const url = new URL(currentUrl);
-        filterState.contextFilter = url.hostname;
-      }
-
-      pillElement?.classList.add('active');
-
-      // [NOT-36] Auto-expand notes when activating context filter
-      setAllNotesExpanded(true);
-    }
-
-    // Apply filter and re-render
-    filterAndRenderNotes();
-
-    // Auto-expand all notes after rendering if filter is active
-    if (filterState.contextFilter) {
-      setTimeout(() => setAllNotesExpanded(true), 0);
-    }
-
-    // Save filter state
-    await saveFilterState();
-  } catch (error) {
-    error('[NOT-31] [NOT-39] Error handling context pill click:', error);
-  }
-}
-
-/**
- * [NOT-34] AI Chat Mode
- */
-/**
- * [NOT-46] AI Chat Mode - Renders the chat interface
- * Loads chat history, initializes AI harness, and sets up event listeners
- */
-async function renderAIChatMode() {
-  currentMode = 'ai-chat';
-  navigateToView('ai-chat-mode');
-
-  // Get DOM elements
-  const chatMessages = document.getElementById('chat-messages');
-  const chatInput = document.getElementById('chat-input');
-  const sendButton = document.getElementById('send-chat-button');
-  const clearButton = document.getElementById('clear-chat-button');
-  const modelSelector = document.getElementById('chat-model-selector');
-  const emptyState = document.getElementById('chat-empty-state');
-
-  if (!chatMessages || !chatInput || !sendButton) {
-    error('[NOT-46] Chat DOM elements not found');
-    return;
-  }
-
-  // State for current chat
-  let currentChatId = null;
-  let isStreaming = false;
-
-  /**
-   * Load or create chat session
-   */
-  async function loadChat() {
-    try {
-      const latestChat = await window.database.getLatestChat();
-
-      if (latestChat) {
-        currentChatId = latestChat.id;
-        log('[NOT-46] Loaded existing chat:', currentChatId);
-
-        // Load message history
-        const messages = await window.database.getChatHistory(currentChatId);
-
-        // Clear messages area
-        chatMessages.innerHTML = '';
-
-        if (messages.length > 0) {
-          emptyState.classList.add('hidden');
-
-          // Render each message
-          messages.forEach(msg => {
-            renderMessage(msg.role, msg.content, false);
-          });
-
-          // Scroll to bottom
-          chatMessages.scrollTop = chatMessages.scrollHeight;
-        } else {
-          emptyState.classList.remove('hidden');
-        }
-
-        // Set model selector
-        if (latestChat.modelId) {
-          modelSelector.value = latestChat.modelId;
-        }
-      } else {
-        // Create new chat
-        const modelId = modelSelector.value;
-        currentChatId = await window.database.createChat('New Chat', modelId);
-        log('[NOT-46] Created new chat:', currentChatId);
-        emptyState.classList.remove('hidden');
-      }
-    } catch (error) {
-      error('[NOT-46] Failed to load chat:', error);
-    }
-  }
-
-  /**
-   * Render a message bubble in the chat
-   */
-  function renderMessage(role, content, animate = true) {
-    emptyState.classList.add('hidden');
-
-    const bubble = document.createElement('div');
-    bubble.className = `chat-bubble chat-bubble-${role}`;
-    if (animate) {
-      bubble.style.opacity = '0';
-    }
-
-    const avatar = document.createElement('div');
-    avatar.className = 'chat-bubble-avatar';
-    avatar.textContent = role === 'user' ? 'U' : '✨';
-
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'chat-bubble-content';
-    contentDiv.textContent = content;
-
-    bubble.appendChild(avatar);
-    bubble.appendChild(contentDiv);
-    chatMessages.appendChild(bubble);
-
-    // Animate in
-    if (animate) {
-      requestAnimationFrame(() => {
-        bubble.style.opacity = '1';
-      });
-    }
-
-    // Scroll to bottom
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    return contentDiv;
-  }
-
-  /**
-   * Send a message to the AI
-   */
-  async function sendMessage() {
-    const text = chatInput.value.trim();
-    if (!text || isStreaming) return;
-
-    // Disable input
-    chatInput.disabled = true;
-    sendButton.disabled = true;
-    sendButton.classList.add('loading');
-    isStreaming = true;
-
-    try {
-      // Render user message
-      renderMessage('user', text);
-      await window.database.addMessage(currentChatId, 'user', text);
-
-      // Clear input
-      chatInput.value = '';
-      chatInput.style.height = 'auto';
-
-      // Get message history for context
-      const messages = await window.database.getChatHistory(currentChatId);
-      const messageHistory = messages.map(m => ({
-        role: m.role,
-        content: m.content
-      }));
-
-      // Create AI message bubble with streaming cursor
-      const aiContentDiv = renderMessage('assistant', '');
-      const cursor = document.createElement('span');
-      cursor.className = 'streaming-cursor';
-      aiContentDiv.appendChild(cursor);
-
-      let fullResponse = '';
-
-      // Initialize harness
-      await window.aiHarness.initialize('openrouter');
-
-      // Send message with streaming
-      await window.aiHarness.sendMessage(
-        text,
-        {
-          messages: messageHistory.slice(0, -1), // Don't include the message we just added
-          modelId: modelSelector.value
-        },
-        // onChunk
-        (chunk) => {
-          fullResponse += chunk;
-          aiContentDiv.textContent = fullResponse;
-          aiContentDiv.appendChild(cursor); // Re-add cursor after text update
-          chatMessages.scrollTop = chatMessages.scrollHeight;
-        },
-        // onComplete
-        async () => {
-          cursor.remove();
-          await window.database.addMessage(currentChatId, 'assistant', fullResponse);
-          log('[NOT-46] Message sent and saved');
-          isStreaming = false;
-          chatInput.disabled = false;
-          sendButton.disabled = false;
-          sendButton.classList.remove('loading');
-          chatInput.focus();
-        },
-        // onError
-        (error) => {
-          cursor.remove();
-          aiContentDiv.textContent = `Error: ${error.message}`;
-          aiContentDiv.style.color = 'var(--color-error)';
-          error('[NOT-46] Chat error:', error);
-          isStreaming = false;
-          chatInput.disabled = false;
-          sendButton.disabled = false;
-          sendButton.classList.remove('loading');
-        }
-      );
-    } catch (error) {
-      error('[NOT-46] Failed to send message:', error);
-      isStreaming = false;
-      chatInput.disabled = false;
-      sendButton.disabled = false;
-      sendButton.classList.remove('loading');
-    }
-  }
-
-  /**
-   * Clear chat history
-   */
-  async function clearChat() {
-    if (!currentChatId) return;
-
-    const confirmed = confirm('Clear all messages in this chat?');
-    if (!confirmed) return;
-
-    try {
-      await window.database.deleteChat(currentChatId);
-
-      // Create new chat
-      const modelId = modelSelector.value;
-      currentChatId = await window.database.createChat('New Chat', modelId);
-
-      // Clear UI
-      chatMessages.innerHTML = '';
-      emptyState.classList.remove('hidden');
-      chatMessages.appendChild(emptyState);
-
-      log('[NOT-46] Chat cleared');
-    } catch (error) {
-      error('[NOT-46] Failed to clear chat:', error);
-    }
-  }
-
-  /**
-   * Handle input changes
-   */
-  function handleInputChange() {
-    const hasText = chatInput.value.trim().length > 0;
-    sendButton.disabled = !hasText || isStreaming;
-
-    // Auto-resize textarea
-    chatInput.style.height = 'auto';
-    chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
-  }
-
-  // Set up event listeners
-  sendButton.addEventListener('click', sendMessage);
-
-  chatInput.addEventListener('input', handleInputChange);
-
-  chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  clearButton.addEventListener('click', clearChat);
-
-  // Load chat on mount
-  await loadChat();
-
-  // Focus input
-  chatInput.focus();
-}
-
-/**
- * [NOT-40] Settings Mode - Shows Gemini Nano download status and settings
- */
-async function renderSettingsMode() {
-  currentMode = 'settings';
-  navigateToView('settings-mode');
-
-  // [NOT-46] Set up OpenRouter API key handlers
-  await setupOpenRouterSettings();
-
-  // [NOT-40] Load and display Gemini Nano status
-  await updateGeminiStatusDisplay();
-
-  // [NOT-40] Start polling for status updates if downloading
-  startGeminiStatusPolling();
-}
-
-/**
- * [NOT-46] Set up OpenRouter API key settings
- * Loads saved key, sets up event handlers for save/test/visibility toggle
- */
-async function setupOpenRouterSettings() {
-  const apiKeyInput = document.getElementById('openrouter-api-key');
-  const toggleVisibilityButton = document.getElementById('toggle-api-key-visibility');
-  const saveButton = document.getElementById('save-settings-button');
-  const testButton = document.getElementById('test-api-key-button');
-  const statusDiv = document.getElementById('settings-status');
-
-  if (!apiKeyInput || !saveButton || !testButton || !statusDiv) {
-    error('[NOT-46] Settings DOM elements not found');
-    return;
-  }
-
-  /**
-   * Show status message
-   */
-  function showStatus(message, type = 'info') {
-    statusDiv.textContent = message;
-    statusDiv.className = `settings-status ${type}`;
-    statusDiv.classList.remove('hidden');
-
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      statusDiv.classList.add('hidden');
-    }, 5000);
-  }
-
-  /**
-   * Load saved API key
-   */
-  async function loadApiKey() {
-    try {
-      const { openRouterApiKey } = await chrome.storage.local.get('openRouterApiKey');
-      if (openRouterApiKey) {
-        apiKeyInput.value = openRouterApiKey;
-        log('[NOT-46] Loaded OpenRouter API key');
-      }
-    } catch (error) {
-      error('[NOT-46] Failed to load API key:', error);
-    }
-  }
-
-  /**
-   * Save API key
-   */
-  async function saveApiKey() {
-    const apiKey = apiKeyInput.value.trim();
-
-    if (!apiKey) {
-      showStatus('Please enter an API key', 'error');
-      return;
-    }
-
-    saveButton.disabled = true;
-
-    try {
-      await chrome.storage.local.set({ openRouterApiKey: apiKey });
-      showStatus('API key saved successfully!', 'success');
-      log('[NOT-46] API key saved');
-    } catch (error) {
-      showStatus('Failed to save API key', 'error');
-      error('[NOT-46] Failed to save API key:', error);
-    } finally {
-      saveButton.disabled = false;
-    }
-  }
-
-  /**
-   * Test API key
-   */
-  async function testApiKey() {
-    const apiKey = apiKeyInput.value.trim();
-
-    if (!apiKey) {
-      showStatus('Please enter an API key first', 'error');
-      return;
-    }
-
-    testButton.disabled = true;
-    testButton.textContent = 'Testing...';
-
-    try {
-      // Save key temporarily for testing
-      await chrome.storage.local.set({ openRouterApiKey: apiKey });
-
-      // Initialize and test
-      await window.aiHarness.initialize('openrouter');
-      const isValid = await window.aiHarness.testProvider();
-
-      if (isValid) {
-        showStatus('✅ API key is valid!', 'success');
-      } else {
-        showStatus('❌ API key is invalid or connection failed', 'error');
-      }
-    } catch (error) {
-      showStatus('❌ Test failed: ' + error.message, 'error');
-      error('[NOT-46] API key test failed:', error);
-    } finally {
-      testButton.disabled = false;
-      testButton.textContent = 'Test Connection';
-    }
-  }
-
-  /**
-   * Toggle API key visibility
-   */
-  function toggleVisibility() {
-    if (apiKeyInput.type === 'password') {
-      apiKeyInput.type = 'text';
-      toggleVisibilityButton.textContent = '🙈';
-    } else {
-      apiKeyInput.type = 'password';
-      toggleVisibilityButton.textContent = '👁️';
-    }
-  }
-
-  // Set up event listeners (remove old ones first to avoid duplicates)
-  saveButton.removeEventListener('click', saveApiKey);
-  saveButton.addEventListener('click', saveApiKey);
-
-  testButton.removeEventListener('click', testApiKey);
-  testButton.addEventListener('click', testApiKey);
-
-  if (toggleVisibilityButton) {
-    toggleVisibilityButton.removeEventListener('click', toggleVisibility);
-    toggleVisibilityButton.addEventListener('click', toggleVisibility);
-  }
-
-  // Keyboard shortcut: Cmd/Ctrl + Enter to save
-  apiKeyInput.removeEventListener('keydown', handleKeydown);
-  apiKeyInput.addEventListener('keydown', handleKeydown);
-
-  function handleKeydown(e) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault();
-      saveApiKey();
-    }
-  }
-
-  // Load existing API key
-  await loadApiKey();
-}
-
-/**
- * [NOT-40] Update the Gemini Nano status display in settings
- */
-async function updateGeminiStatusDisplay() {
-  try {
-    const response = await chrome.runtime.sendMessage({ action: 'GET_GEMINI_STATUS' });
-    if (!response.success) {
-      error('[NOT-40] Failed to get Gemini status:', response.error);
-      return;
-    }
-
-    const status = response.status;
-    log('[NOT-40] Gemini status:', status);
-
-    const settingsContainer = document.getElementById('settings-mode');
-    const statusSection = settingsContainer.querySelector('.gemini-status-section') ||
-                          createGeminiStatusSection();
-
-    if (!settingsContainer.querySelector('.gemini-status-section')) {
-      // Clear placeholder and add status section
-      const emptyState = settingsContainer.querySelector('.empty-state');
-      if (emptyState) emptyState.remove();
-      settingsContainer.appendChild(statusSection);
-    }
-
-    updateStatusUI(statusSection, status);
-  } catch (error) {
-    error('[NOT-40] Error updating Gemini status:', error);
-  }
-}
-
-/**
- * [NOT-40] [NOT-43] Create the Gemini status section UI
- * Compact, modular layout that integrates seamlessly with other settings
- * @private
- */
-function createGeminiStatusSection() {
-  const section = document.createElement('div');
-  section.className = 'gemini-status-section';
-  section.innerHTML = `
-    <div class="settings-header">
-      <h2>AI Synthesis (Gemini Nano)</h2>
-      <p class="settings-description">On-device AI for generating insights from your notes</p>
-    </div>
-
-    <div class="status-card">
-      <div class="status-header">
-        <div class="status-icon"></div>
-        <div class="status-info">
-          <div class="status-title"></div>
-          <div class="status-message"></div>
-        </div>
-      </div>
-      <div class="status-progress hidden">
-        <div class="progress-bar">
-          <div class="progress-fill"></div>
-        </div>
-        <div class="progress-text"></div>
-      </div>
-      <div class="status-actions hidden">
-        <button id="initialize-gemini-button" class="primary-button">
-          Download Gemini Nano
-        </button>
-      </div>
-      <div class="status-error hidden">
-        <div class="error-message"></div>
-      </div>
-    </div>
-
-    <details class="settings-info">
-      <summary>Show system requirements</summary>
-      <div class="requirements-content">
-        <ul>
-          <li>Chrome 138+ (stable release)</li>
-          <li>22 GB free storage</li>
-          <li>16 GB RAM + 4 cores, OR 4 GB VRAM GPU</li>
-          <li>Windows 10+, macOS 13+, Linux, or ChromeOS</li>
-        </ul>
-      </div>
-    </details>
-  `;
-
-  // Wire up the initialize button
-  const initButton = section.querySelector('#initialize-gemini-button');
-  if (initButton) {
-    initButton.addEventListener('click', handleInitializeGemini);
-  }
-
-  return section;
-}
-
-/**
- * [NOT-40] Update the status UI based on current state
- * @private
- */
-function updateStatusUI(section, status) {
-  const statusIcon = section.querySelector('.status-icon');
-  const statusTitle = section.querySelector('.status-title');
-  const statusMessage = section.querySelector('.status-message');
-  const statusProgress = section.querySelector('.status-progress');
-  const progressFill = section.querySelector('.progress-fill');
-  const progressText = section.querySelector('.progress-text');
-  const statusActions = section.querySelector('.status-actions');
-  const statusError = section.querySelector('.status-error');
-  const errorMessage = section.querySelector('.error-message');
-
-  // Hide all optional elements by default
-  statusProgress.classList.add('hidden');
-  statusActions.classList.add('hidden');
-  statusError.classList.add('hidden');
-
-  switch (status.status) {
-    case 'ready':
-      statusIcon.textContent = '✅';
-      statusTitle.textContent = 'Ready';
-      statusMessage.textContent = 'Gemini Nano is installed and ready to synthesize your notes.';
-      break;
-
-    case 'downloading':
-      statusIcon.textContent = '📥';
-      statusTitle.textContent = 'Downloading...';
-      statusMessage.textContent = 'Gemini Nano is being downloaded. This may take a few minutes.';
-      statusProgress.classList.remove('hidden');
-      const percentage = Math.round(status.progress * 100);
-      progressFill.style.width = `${percentage}%`;
-      progressText.textContent = `${percentage}% complete`;
-      break;
-
-    case 'checking':
-      statusIcon.textContent = '🔍';
-      statusTitle.textContent = 'Checking...';
-      statusMessage.textContent = 'Checking if Gemini Nano is available on your system.';
-      break;
-
-    case 'unavailable':
-      statusIcon.textContent = '⚠️';
-      statusTitle.textContent = 'Not Available';
-      statusMessage.textContent = 'Gemini Nano is not available on this system.';
-      statusError.classList.remove('hidden');
-      errorMessage.textContent = status.error || 'System does not meet requirements.';
-      break;
-
-    case 'error':
-      statusIcon.textContent = '❌';
-      statusTitle.textContent = 'Error';
-      statusMessage.textContent = 'Failed to initialize Gemini Nano.';
-      statusError.classList.remove('hidden');
-      errorMessage.textContent = status.error || 'Unknown error occurred.';
-      statusActions.classList.remove('hidden');
-      break;
-
-    case 'unknown':
-    default:
-      statusIcon.textContent = '⏳';
-      statusTitle.textContent = 'Unknown';
-      statusMessage.textContent = 'Gemini Nano status has not been checked yet.';
-      statusActions.classList.remove('hidden');
-      break;
-  }
-}
-
-/**
- * [NOT-40] Handle Initialize Gemini button click
- */
-async function handleInitializeGemini() {
-  const button = document.getElementById('initialize-gemini-button');
-  if (!button) return;
-
-  const originalText = button.textContent;
-  button.disabled = true;
-  button.textContent = 'Initializing...';
-
-  try {
-    log('[NOT-40] Manually triggering Gemini Nano initialization...');
-    const response = await chrome.runtime.sendMessage({ action: 'INITIALIZE_GEMINI' });
-
-    if (!response.success) {
-      throw new Error(response.error || 'Initialization failed');
-    }
-
-    log('[NOT-40] Gemini Nano initialization triggered successfully');
-    await updateGeminiStatusDisplay();
-
-  } catch (error) {
-    error('[NOT-40] Failed to initialize Gemini Nano:', error);
-    alert(`Failed to initialize Gemini Nano: ${error.message}`);
-  } finally {
-    button.disabled = false;
-    button.textContent = originalText;
-  }
-}
-
-/**
- * [NOT-40] Start polling for Gemini status updates
- * Polls every 2 seconds while downloading or checking
- * Stops when status reaches a final state
- * @private
- */
-let geminiStatusPollInterval = null;
-
-function startGeminiStatusPolling() {
-  // Clear any existing interval
-  if (geminiStatusPollInterval) {
-    clearInterval(geminiStatusPollInterval);
-  }
-
-  // Poll every 2 seconds
-  geminiStatusPollInterval = setInterval(async () => {
-    // Only poll if we're still on settings page
-    if (currentMode !== 'settings') {
-      clearInterval(geminiStatusPollInterval);
-      geminiStatusPollInterval = null;
-      log('[NOT-40] Stopped polling - left settings page');
-      return;
-    }
-
-    // Get current status
-    try {
-      const response = await chrome.runtime.sendMessage({ action: 'GET_GEMINI_STATUS' });
-      if (response.success) {
-        const status = response.status.status;
-
-        // Stop polling if we reached a final state
-        if (status === 'ready' || status === 'unavailable' || status === 'error') {
-          clearInterval(geminiStatusPollInterval);
-          geminiStatusPollInterval = null;
-          log(`[NOT-40] Stopped polling - final status reached: ${status}`);
-        }
-
-        // Update display
-        await updateGeminiStatusDisplay();
-      }
-    } catch (error) {
-      error('[NOT-40] Error polling Gemini status:', error);
-    }
-  }, 2000);
-}
+// =============================================================================
+// @LIBRARY - List rendering, filtering, sorting
+// =============================================================================
 
 /**
  * Library Mode
@@ -3282,442 +2481,6 @@ function renderNotesList() {
   log(`📝 Rendered ${filteredNotes.length} notes`);
 }
 
-/**
- * [NOT-39] Render hybrid view with "From this Page" and "Related Concepts" sections
- * Used when context pill is clicked in semantic or hybrid state
- * @param {HTMLElement} notesListEl - The notes list container element
- */
-async function renderHybridView(notesListEl) {
-  try {
-    // Get current tab URL for filtering exact matches
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url) return;
-
-    const currentUrl = tab.url;
-
-    // Filter exact matches from all notes
-    const exactMatches = allNotes.filter(note => note.url === currentUrl);
-
-    let indexOffset = 0;
-
-    // Section 1: "From this Page" (if we have exact matches)
-    if (exactMatches.length > 0) {
-      const header1 = document.createElement('div');
-      header1.className = 'hybrid-section-header';
-      header1.textContent = 'From this Page';
-      notesListEl.appendChild(header1);
-
-      exactMatches.forEach((note, index) => {
-        const noteCard = createNoteCard(note, index);
-        if (isExpandedAll) {
-          noteCard.classList.add('expanded');
-          noteCard.setAttribute('aria-expanded', 'true');
-        }
-        notesListEl.appendChild(noteCard);
-      });
-
-      indexOffset = exactMatches.length;
-    }
-
-    // Section 2: "Related Concepts" (if we have semantic matches)
-    if (semanticMatches.length > 0) {
-      // [NOT-40] AI Action Header (Synthesize Connections)
-      const aiAction = document.createElement('button');
-      aiAction.className = 'ai-action-header';
-      aiAction.id = 'synthesize-button';
-      aiAction.innerHTML = `
-        <svg class="icon icon-sm" style="margin-right: 8px;">
-          <use href="#icon-sparkle"></use>
-        </svg>
-        <span>Synthesize Connections</span>
-      `;
-
-      // [NOT-40] Disable button if Gemini Nano is not available
-      if (!geminiAvailable) {
-        aiAction.disabled = true;
-        aiAction.classList.add('disabled');
-        aiAction.title = 'Enable Gemini Nano in Chrome flags to use this feature';
-        log('⚠️  [NOT-40] Synthesize button disabled - Gemini Nano unavailable');
-      } else {
-        aiAction.addEventListener('click', () => handleSynthesizeClick(semanticMatches));
-      }
-
-      notesListEl.appendChild(aiAction);
-
-      const header2 = document.createElement('div');
-      header2.className = 'hybrid-section-header ai-section';
-      header2.textContent = 'Related Concepts';
-      notesListEl.appendChild(header2);
-
-      // [NOT-48] Use createNoteCard for semantic matches instead of renderInsightCard
-      semanticMatches.forEach((matchResult, index) => {
-        const { note } = matchResult;
-
-        // [NOT-48] Hydrate with full note data from allNotes to ensure:
-        // 1. Current state (starred, readLater) is reflected
-        // 2. Complete metadata (siteName, favicon) is available
-        const fullNote = allNotes.find(n => n.id === note.id);
-
-        if (!fullNote) {
-          warn(`⚠️ [NOT-48] Note ${note.id} not found in allNotes, skipping`);
-          return; // Skip this note if not found
-        }
-
-        const noteCard = createNoteCard(fullNote, indexOffset + index);
-
-        // [NOT-48] Add .related class for visual distinction
-        noteCard.classList.add('related');
-
-        // [NOT-48] Inject "Thumbs Down" feedback button into .note-actions
-        const noteActions = noteCard.querySelector('.note-actions');
-        if (noteActions) {
-          const feedbackButton = document.createElement('button');
-          feedbackButton.className = 'delete-button feedback-button';
-          feedbackButton.title = 'Mark as not relevant';
-          feedbackButton.setAttribute('aria-label', 'Mark this connection as not relevant');
-          feedbackButton.innerHTML = `
-            <svg class="icon icon-sm">
-              <use href="#icon-x"></use>
-            </svg>
-          `;
-
-          // [NOT-48] Add feedback handler
-          feedbackButton.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            await handleRelatedNoteFeedback(fullNote.id, noteCard);
-          });
-
-          // Insert feedback button as first action (before edit)
-          noteActions.insertBefore(feedbackButton, noteActions.firstChild);
-        }
-
-        // Apply expand state if needed
-        if (isExpandedAll) {
-          noteCard.classList.add('expanded');
-          noteCard.setAttribute('aria-expanded', 'true');
-        }
-
-        notesListEl.appendChild(noteCard);
-      });
-    }
-
-    log(`📝 [NOT-39] [NOT-48] Rendered hybrid view: ${exactMatches.length} exact, ${semanticMatches.length} semantic`);
-  } catch (err) {
-    error('[NOT-39] [NOT-48] Error rendering hybrid view:', err);
-  }
-}
-
-/**
- * [NOT-48] Handle feedback on related note card - mark connection as not relevant
- * Stores exclusion in database, removes card with animation, triggers context recall update
- * @param {string} noteId - The ID of the note to mark as irrelevant
- * @param {HTMLElement} cardElement - The note card element to remove
- * @returns {Promise<void>}
- */
-async function handleRelatedNoteFeedback(noteId, cardElement) {
-  try {
-    // Get current tab URL for context
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url) {
-      warn('[NOT-48] Cannot get current URL for feedback');
-      return;
-    }
-
-    const currentUrl = tab.url;
-
-    // Disable the feedback button to prevent duplicate clicks
-    const feedbackButton = cardElement.querySelector('.feedback-button');
-    if (feedbackButton) {
-      feedbackButton.disabled = true;
-      feedbackButton.style.opacity = '0.5';
-    }
-
-    // Store exclusion in database
-    await window.database.addIgnoredConnection(noteId, currentUrl);
-    log(`✅ [NOT-48] Marked connection as not relevant: ${noteId} on ${currentUrl}`);
-
-    // Remove from semanticMatches array
-    semanticMatches = semanticMatches.filter(match => match.note.id !== noteId);
-
-    // Add removing animation class
-    cardElement.classList.add('removing');
-
-    // Show tooltip notification
-    showTooltip(cardElement, 'Marked as not relevant');
-
-    // Remove card after animation completes
-    setTimeout(() => {
-      cardElement.remove();
-
-      // If no more semantic matches, refresh context pill to update count
-      if (semanticMatches.length === 0) {
-        checkContextualRecall();
-      }
-    }, 200); // Match animation duration
-
-  } catch (err) {
-    error('[NOT-48] Error handling related note feedback:', err);
-
-    // Re-enable button on error
-    const feedbackButton = cardElement.querySelector('.feedback-button');
-    if (feedbackButton) {
-      feedbackButton.disabled = false;
-      feedbackButton.style.opacity = '1';
-    }
-
-    alert('Failed to mark connection as not relevant. Please try again.');
-  }
-}
-
-/**
- * [NOT-40] Handle Synthesize button click
- * Generates AI synthesis from current page context and related notes
- * @param {Array} semanticMatches - Array of semantic match results
- */
-async function handleSynthesizeClick(semanticMatches) {
-  log('✨ [NOT-40] Synthesize Connections clicked');
-
-  // Prevent multiple simultaneous syntheses
-  if (window.geminiService.isSynthesizing) {
-    log('⚠️  [NOT-40] Synthesis already in progress, ignoring click');
-    return;
-  }
-
-  const button = document.getElementById('synthesize-button');
-  if (!button) {
-    error('❌ [NOT-40] Synthesize button not found');
-    return;
-  }
-
-  try {
-    // Disable button and show loading state
-    button.disabled = true;
-    button.classList.add('loading');
-    const buttonText = button.querySelector('span');
-    const originalText = buttonText.textContent;
-    buttonText.textContent = 'Synthesizing...';
-
-    // Get current page context
-    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const currentContext = {
-      title: activeTab.title,
-      url: activeTab.url
-    };
-    log('📄 [NOT-40] Current context:', currentContext);
-
-    // Prepare related notes (already have them from semanticMatches)
-    const relatedNotes = semanticMatches.map(match => ({
-      note: match.note,
-      similarity: match.similarity
-    }));
-    log('📚 [NOT-40] Related notes:', relatedNotes.length);
-
-    // Generate synthesis using Gemini Nano
-    const stream = await window.geminiService.generateSynthesis(currentContext, relatedNotes);
-    log('🌊 [NOT-40] Stream received, starting output');
-
-    // Display streaming output
-    await displaySynthesisStream(stream, button);
-
-    // Re-enable button after completion
-    button.disabled = false;
-    button.classList.remove('loading');
-    buttonText.textContent = originalText;
-    log('✅ [NOT-40] Synthesis completed successfully');
-
-  } catch (error) {
-    error('❌ [NOT-40] Synthesis failed:', error);
-
-    // Show error message to user
-    const notesListEl = document.getElementById('notes-list');
-    const errorContainer = document.getElementById('synthesis-output');
-
-    if (errorContainer) {
-      errorContainer.innerHTML = `
-        <div class="synthesis-error">
-          <strong>Synthesis Failed</strong>
-          <p>${error.message || 'An unexpected error occurred. Please try again.'}</p>
-        </div>
-      `;
-    }
-
-    // Re-enable button
-    if (button) {
-      button.disabled = false;
-      button.classList.remove('loading');
-      const buttonText = button.querySelector('span');
-      if (buttonText) {
-        buttonText.textContent = 'Synthesize Connections';
-      }
-    }
-  }
-}
-
-/**
- * [NOT-40] Display streaming synthesis output
- * Consumes a ReadableStream and updates the DOM token-by-token
- * @param {ReadableStream} stream - The AI-generated text stream
- * @param {HTMLElement} button - The synthesize button element
- */
-async function displaySynthesisStream(stream, button) {
-  log('🌊 [NOT-40] Starting synthesis stream display');
-
-  const notesListEl = document.getElementById('notes-list');
-  if (!notesListEl) {
-    error('❌ [NOT-40] Notes list element not found');
-    return;
-  }
-
-  // Find or create synthesis output container
-  let outputContainer = document.getElementById('synthesis-output');
-  if (!outputContainer) {
-    outputContainer = document.createElement('div');
-    outputContainer.id = 'synthesis-output';
-    outputContainer.className = 'synthesis-output';
-
-    // Insert right after the synthesize button
-    if (button && button.nextSibling) {
-      notesListEl.insertBefore(outputContainer, button.nextSibling);
-    } else {
-      notesListEl.insertBefore(outputContainer, notesListEl.firstChild);
-    }
-  }
-
-  // Clear previous content and show streaming cursor
-  outputContainer.innerHTML = '<div class="synthesis-content streaming"></div>';
-  const contentDiv = outputContainer.querySelector('.synthesis-content');
-
-  try {
-    let fullText = '';
-
-    // Consume the stream token by token
-    for await (const chunk of stream) {
-      fullText += chunk;
-
-      // Update the DOM with formatted content
-      contentDiv.innerHTML = formatMarkdown(fullText) + '<span class="streaming-cursor"></span>';
-
-      // Scroll to keep the output visible
-      contentDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    // Remove streaming cursor when done
-    contentDiv.classList.remove('streaming');
-    contentDiv.innerHTML = formatMarkdown(fullText);
-
-    log('✅ [NOT-40] Stream display completed');
-  } catch (error) {
-    error('❌ [NOT-40] Error displaying stream:', error);
-    contentDiv.innerHTML = `<div class="synthesis-error">Error displaying synthesis: ${error.message}</div>`;
-  }
-}
-
-/**
- * [NOT-40] Format markdown text to HTML
- * Handles basic markdown: bold, lists, paragraphs
- * @param {string} text - Raw markdown text
- * @returns {string} - HTML string
- */
-function formatMarkdown(text) {
-  if (!text) return '';
-
-  // Escape HTML to prevent XSS
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // Bold text: **text** or __text__
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-
-  // Italic text: *text* or _text_
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  html = html.replace(/_(.+?)_/g, '<em>$1</em>');
-
-  // Convert bullet points to list items
-  // Handle lines starting with - or *
-  const lines = html.split('\n');
-  let inList = false;
-  const processedLines = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    // Check if line is a bullet point
-    if (line.match(/^[-*]\s+/)) {
-      const content = line.replace(/^[-*]\s+/, '');
-
-      if (!inList) {
-        processedLines.push('<ul>');
-        inList = true;
-      }
-
-      processedLines.push(`<li>${content}</li>`);
-    } else {
-      // Not a bullet point
-      if (inList) {
-        processedLines.push('</ul>');
-        inList = false;
-      }
-
-      // Add as paragraph if not empty
-      if (line) {
-        processedLines.push(`<p>${line}</p>`);
-      }
-    }
-  }
-
-  // Close list if still open
-  if (inList) {
-    processedLines.push('</ul>');
-  }
-
-  return processedLines.join('');
-}
-
-/**
- * [NOT-39] Show a temporary tooltip notification
- * @param {HTMLElement} anchorElement - Element to position tooltip near
- * @param {string} message - Message to display
- */
-function showTooltip(anchorElement, message) {
-  const tooltip = document.createElement('div');
-  tooltip.className = 'feedback-tooltip';
-  tooltip.textContent = message;
-  tooltip.style.cssText = `
-    position: fixed;
-    background: var(--color-text-primary);
-    color: white;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-sm);
-    z-index: 1000;
-    pointer-events: none;
-    animation: enter-scale var(--duration-base) var(--ease-out-spring);
-  `;
-
-  // Position near the anchor element
-  const rect = anchorElement.getBoundingClientRect();
-  tooltip.style.top = `${rect.top}px`;
-  tooltip.style.left = `${rect.left + rect.width / 2}px`;
-  tooltip.style.transform = 'translateX(-50%)';
-
-  document.body.appendChild(tooltip);
-
-  // Remove after 2 seconds
-  setTimeout(() => {
-    tooltip.style.animation = 'exit-scale var(--duration-base) var(--ease-out-spring) forwards';
-    setTimeout(() => tooltip.remove(), 200);
-  }, 2000);
-}
-
-/**
- * [NOT-23] Create a note card element with optional staggered animation
- * @param {Object} note - The note data
- * @param {number} index - The index for staggered animation delay
- * @returns {HTMLElement} - The note card element
- */
 function createNoteCard(note, index = 0) {
   const template = document.getElementById('note-card-template');
   const card = template.content.cloneNode(true).querySelector('.note-card');
@@ -4917,6 +3680,1183 @@ function handleDownloadImage(imageData) {
   }
 }
 
+
+
+// =============================================================================
+// @AI - Chat, Contextual Recall & Synthesis
+// =============================================================================
+
+/**
+ * [NOT-34] AI Chat Mode
+ */
+/**
+ * [NOT-46] AI Chat Mode - Renders the chat interface
+ * Loads chat history, initializes AI harness, and sets up event listeners
+ */
+async function renderAIChatMode() {
+  currentMode = 'ai-chat';
+  navigateToView('ai-chat-mode');
+
+  // Get DOM elements
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput = document.getElementById('chat-input');
+  const sendButton = document.getElementById('send-chat-button');
+  const clearButton = document.getElementById('clear-chat-button');
+  const emptyState = document.getElementById('chat-empty-state');
+
+  if (!chatMessages || !chatInput || !sendButton) {
+    error('[NOT-46] Chat DOM elements not found');
+    return;
+  }
+
+  // [NOT-51] Load preferred model from storage
+  let preferredModel = 'auto'; // Default to smart auto
+  try {
+    const { preferredModel: savedModel } = await chrome.storage.local.get('preferredModel');
+    if (savedModel) {
+      preferredModel = savedModel;
+      log('[NOT-51] Using preferred model:', preferredModel);
+    }
+  } catch (error) {
+    error('[NOT-51] Failed to load preferred model:', error);
+  }
+
+  // State for current chat
+  let currentChatId = null;
+  let isStreaming = false;
+
+  /**
+   * Load or create chat session
+   * [NOT-51] Now uses preferredModel from storage instead of selector
+   * [NOT-51] Fixed: Clear only message bubbles, not empty state element
+   */
+  async function loadChat() {
+    try {
+      const latestChat = await window.database.getLatestChat();
+
+      if (latestChat) {
+        currentChatId = latestChat.id;
+        log('[NOT-46] Loaded existing chat:', currentChatId);
+
+        // Load message history
+        const messages = await window.database.getChatHistory(currentChatId);
+
+        // [NOT-51] Clear only message bubbles, preserve empty state element
+        const bubbles = chatMessages.querySelectorAll('.chat-bubble');
+        bubbles.forEach(bubble => bubble.remove());
+
+        if (messages.length > 0) {
+          emptyState.classList.add('hidden');
+
+          // Render each message
+          messages.forEach(msg => {
+            renderMessage(msg.role, msg.content, false);
+          });
+
+          // Scroll to bottom
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        } else {
+          emptyState.classList.remove('hidden');
+        }
+      } else {
+        // [NOT-51] Create new chat with preferred model
+        currentChatId = await window.database.createChat('New Chat', preferredModel);
+        log('[NOT-46] Created new chat:', currentChatId);
+        emptyState.classList.remove('hidden');
+      }
+    } catch (error) {
+      error('[NOT-46] Failed to load chat:', error);
+    }
+  }
+
+  /**
+   * Render a message bubble in the chat
+   */
+  function renderMessage(role, content, animate = true) {
+    emptyState.classList.add('hidden');
+
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble chat-bubble-${role}`;
+    if (animate) {
+      bubble.style.opacity = '0';
+    }
+
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-bubble-avatar';
+    avatar.textContent = role === 'user' ? 'U' : '✨';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'chat-bubble-content';
+    contentDiv.textContent = content;
+
+    bubble.appendChild(avatar);
+    bubble.appendChild(contentDiv);
+    chatMessages.appendChild(bubble);
+
+    // Animate in
+    if (animate) {
+      requestAnimationFrame(() => {
+        bubble.style.opacity = '1';
+      });
+    }
+
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    return contentDiv;
+  }
+
+  /**
+   * Send a message to the AI
+   */
+  async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text || isStreaming) return;
+
+    // Disable input
+    chatInput.disabled = true;
+    sendButton.disabled = true;
+    sendButton.classList.add('loading');
+    isStreaming = true;
+
+    try {
+      // Render user message
+      renderMessage('user', text);
+      await window.database.addMessage(currentChatId, 'user', text);
+
+      // Clear input
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+
+      // Get message history for context
+      const messages = await window.database.getChatHistory(currentChatId);
+      const messageHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
+      // Create AI message bubble with streaming cursor
+      const aiContentDiv = renderMessage('assistant', '');
+      const cursor = document.createElement('span');
+      cursor.className = 'streaming-cursor';
+      aiContentDiv.appendChild(cursor);
+
+      let fullResponse = '';
+
+      // Initialize harness
+      await window.aiHarness.initialize('openrouter');
+
+      // [NOT-51] Send message with streaming using preferred model
+      await window.aiHarness.sendMessage(
+        text,
+        {
+          messages: messageHistory.slice(0, -1), // Don't include the message we just added
+          modelId: preferredModel
+        },
+        // onChunk
+        (chunk) => {
+          fullResponse += chunk;
+          aiContentDiv.textContent = fullResponse;
+          aiContentDiv.appendChild(cursor); // Re-add cursor after text update
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        },
+        // onComplete
+        async () => {
+          cursor.remove();
+          await window.database.addMessage(currentChatId, 'assistant', fullResponse);
+          log('[NOT-46] Message sent and saved');
+          isStreaming = false;
+          chatInput.disabled = false;
+          sendButton.disabled = false;
+          sendButton.classList.remove('loading');
+          chatInput.focus();
+        },
+        // onError
+        (error) => {
+          cursor.remove();
+          aiContentDiv.textContent = `Error: ${error.message}`;
+          aiContentDiv.style.color = 'var(--color-error)';
+          error('[NOT-46] Chat error:', error);
+          isStreaming = false;
+          chatInput.disabled = false;
+          sendButton.disabled = false;
+          sendButton.classList.remove('loading');
+        }
+      );
+    } catch (error) {
+      error('[NOT-46] Failed to send message:', error);
+      isStreaming = false;
+      chatInput.disabled = false;
+      sendButton.disabled = false;
+      sendButton.classList.remove('loading');
+    }
+  }
+
+  /**
+   * Clear chat history
+   * [NOT-51] Fixed: Use preferredModel instead of deleted modelSelector
+   */
+  async function clearChat() {
+    if (!currentChatId) return;
+
+    const confirmed = confirm('Clear all messages in this chat?');
+    if (!confirmed) return;
+
+    try {
+      await window.database.deleteChat(currentChatId);
+
+      // [NOT-51] Create new chat with preferred model
+      currentChatId = await window.database.createChat('New Chat', preferredModel);
+
+      // [NOT-51] Clear only message bubbles, preserve empty state
+      const bubbles = chatMessages.querySelectorAll('.chat-bubble');
+      bubbles.forEach(bubble => bubble.remove());
+      emptyState.classList.remove('hidden');
+
+      log('[NOT-46] Chat cleared');
+    } catch (error) {
+      error('[NOT-46] Failed to clear chat:', error);
+    }
+  }
+
+  /**
+   * Handle input changes
+   */
+  function handleInputChange() {
+    const hasText = chatInput.value.trim().length > 0;
+    sendButton.disabled = !hasText || isStreaming;
+
+    // Auto-resize textarea
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+  }
+
+  /**
+   * Handle Enter key in chat input
+   */
+  function handleChatKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  // [NOT-51] Remove old event listeners before adding new ones to prevent duplicates
+  sendButton.removeEventListener('click', sendMessage);
+  sendButton.addEventListener('click', sendMessage);
+
+  chatInput.removeEventListener('input', handleInputChange);
+  chatInput.addEventListener('input', handleInputChange);
+
+  chatInput.removeEventListener('keydown', handleChatKeydown);
+  chatInput.addEventListener('keydown', handleChatKeydown);
+
+  clearButton.removeEventListener('click', clearChat);
+  clearButton.addEventListener('click', clearChat);
+
+  // Load chat on mount
+  await loadChat();
+
+  // Focus input
+  chatInput.focus();
+}
+
+/**
+ * [NOT-39] Render hybrid view with "From this Page" and "Related Concepts" sections
+ * Used when context pill is clicked in semantic or hybrid state
+ * @param {HTMLElement} notesListEl - The notes list container element
+ */
+async function renderHybridView(notesListEl) {
+  try {
+    // Get current tab URL for filtering exact matches
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.url) return;
+
+    const currentUrl = tab.url;
+
+    // Filter exact matches from all notes
+    const exactMatches = allNotes.filter(note => note.url === currentUrl);
+
+    let indexOffset = 0;
+
+    // Section 1: "From this Page" (if we have exact matches)
+    if (exactMatches.length > 0) {
+      const header1 = document.createElement('div');
+      header1.className = 'hybrid-section-header';
+      header1.textContent = 'From this Page';
+      notesListEl.appendChild(header1);
+
+      exactMatches.forEach((note, index) => {
+        const noteCard = createNoteCard(note, index);
+        if (isExpandedAll) {
+          noteCard.classList.add('expanded');
+          noteCard.setAttribute('aria-expanded', 'true');
+        }
+        notesListEl.appendChild(noteCard);
+      });
+
+      indexOffset = exactMatches.length;
+    }
+
+    // Section 2: "Related Concepts" (if we have semantic matches)
+    if (semanticMatches.length > 0) {
+      // [NOT-40] AI Action Header (Synthesize Connections)
+      const aiAction = document.createElement('button');
+      aiAction.className = 'ai-action-header';
+      aiAction.id = 'synthesize-button';
+      aiAction.innerHTML = `
+        <svg class="icon icon-sm" style="margin-right: 8px;">
+          <use href="#icon-sparkle"></use>
+        </svg>
+        <span>Synthesize Connections</span>
+      `;
+
+      // [NOT-40] Disable button if Gemini Nano is not available
+      if (!geminiAvailable) {
+        aiAction.disabled = true;
+        aiAction.classList.add('disabled');
+        aiAction.title = 'Enable Gemini Nano in Chrome flags to use this feature';
+        log('⚠️  [NOT-40] Synthesize button disabled - Gemini Nano unavailable');
+      } else {
+        aiAction.addEventListener('click', () => handleSynthesizeClick(semanticMatches));
+      }
+
+      notesListEl.appendChild(aiAction);
+
+      const header2 = document.createElement('div');
+      header2.className = 'hybrid-section-header ai-section';
+      header2.textContent = 'Related Concepts';
+      notesListEl.appendChild(header2);
+
+      // [NOT-48] Use createNoteCard for semantic matches instead of renderInsightCard
+      semanticMatches.forEach((matchResult, index) => {
+        const { note } = matchResult;
+
+        // [NOT-48] Hydrate with full note data from allNotes to ensure:
+        // 1. Current state (starred, readLater) is reflected
+        // 2. Complete metadata (siteName, favicon) is available
+        const fullNote = allNotes.find(n => n.id === note.id);
+
+        if (!fullNote) {
+          warn(`⚠️ [NOT-48] Note ${note.id} not found in allNotes, skipping`);
+          return; // Skip this note if not found
+        }
+
+        const noteCard = createNoteCard(fullNote, indexOffset + index);
+
+        // [NOT-48] Add .related class for visual distinction
+        noteCard.classList.add('related');
+
+        // [NOT-48] Inject "Thumbs Down" feedback button into .note-actions
+        const noteActions = noteCard.querySelector('.note-actions');
+        if (noteActions) {
+          const feedbackButton = document.createElement('button');
+          feedbackButton.className = 'delete-button feedback-button';
+          feedbackButton.title = 'Mark as not relevant';
+          feedbackButton.setAttribute('aria-label', 'Mark this connection as not relevant');
+          feedbackButton.innerHTML = `
+            <svg class="icon icon-sm">
+              <use href="#icon-x"></use>
+            </svg>
+          `;
+
+          // [NOT-48] Add feedback handler
+          feedbackButton.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await handleRelatedNoteFeedback(fullNote.id, noteCard);
+          });
+
+          // Insert feedback button as first action (before edit)
+          noteActions.insertBefore(feedbackButton, noteActions.firstChild);
+        }
+
+        // Apply expand state if needed
+        if (isExpandedAll) {
+          noteCard.classList.add('expanded');
+          noteCard.setAttribute('aria-expanded', 'true');
+        }
+
+        notesListEl.appendChild(noteCard);
+      });
+    }
+
+    log(`📝 [NOT-39] [NOT-48] Rendered hybrid view: ${exactMatches.length} exact, ${semanticMatches.length} semantic`);
+  } catch (err) {
+    error('[NOT-39] [NOT-48] Error rendering hybrid view:', err);
+  }
+}
+
+/**
+ * [NOT-48] Handle feedback on related note card - mark connection as not relevant
+ * Stores exclusion in database, removes card with animation, triggers context recall update
+ * @param {string} noteId - The ID of the note to mark as irrelevant
+ * @param {HTMLElement} cardElement - The note card element to remove
+ * @returns {Promise<void>}
+ */
+async function handleRelatedNoteFeedback(noteId, cardElement) {
+  try {
+    // Get current tab URL for context
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.url) {
+      warn('[NOT-48] Cannot get current URL for feedback');
+      return;
+    }
+
+    const currentUrl = tab.url;
+
+    // Disable the feedback button to prevent duplicate clicks
+    const feedbackButton = cardElement.querySelector('.feedback-button');
+    if (feedbackButton) {
+      feedbackButton.disabled = true;
+      feedbackButton.style.opacity = '0.5';
+    }
+
+    // Store exclusion in database
+    await window.database.addIgnoredConnection(noteId, currentUrl);
+    log(`✅ [NOT-48] Marked connection as not relevant: ${noteId} on ${currentUrl}`);
+
+    // Remove from semanticMatches array
+    semanticMatches = semanticMatches.filter(match => match.note.id !== noteId);
+
+    // Add removing animation class
+    cardElement.classList.add('removing');
+
+    // Show tooltip notification
+    showTooltip(cardElement, 'Marked as not relevant');
+
+    // Remove card after animation completes
+    setTimeout(() => {
+      cardElement.remove();
+
+      // If no more semantic matches, refresh context pill to update count
+      if (semanticMatches.length === 0) {
+        checkContextualRecall();
+      }
+    }, 200); // Match animation duration
+
+  } catch (err) {
+    error('[NOT-48] Error handling related note feedback:', err);
+
+    // Re-enable button on error
+    const feedbackButton = cardElement.querySelector('.feedback-button');
+    if (feedbackButton) {
+      feedbackButton.disabled = false;
+      feedbackButton.style.opacity = '1';
+    }
+
+    alert('Failed to mark connection as not relevant. Please try again.');
+  }
+}
+
+/**
+ * [NOT-40] Handle Synthesize button click
+ * Generates AI synthesis from current page context and related notes
+ * @param {Array} semanticMatches - Array of semantic match results
+ */
+async function handleSynthesizeClick(semanticMatches) {
+  log('✨ [NOT-40] Synthesize Connections clicked');
+
+  // Prevent multiple simultaneous syntheses
+  if (window.geminiService.isSynthesizing) {
+    log('⚠️  [NOT-40] Synthesis already in progress, ignoring click');
+    return;
+  }
+
+  const button = document.getElementById('synthesize-button');
+  if (!button) {
+    error('❌ [NOT-40] Synthesize button not found');
+    return;
+  }
+
+  try {
+    // Disable button and show loading state
+    button.disabled = true;
+    button.classList.add('loading');
+    const buttonText = button.querySelector('span');
+    const originalText = buttonText.textContent;
+    buttonText.textContent = 'Synthesizing...';
+
+    // Get current page context
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const currentContext = {
+      title: activeTab.title,
+      url: activeTab.url
+    };
+    log('📄 [NOT-40] Current context:', currentContext);
+
+    // Prepare related notes (already have them from semanticMatches)
+    const relatedNotes = semanticMatches.map(match => ({
+      note: match.note,
+      similarity: match.similarity
+    }));
+    log('📚 [NOT-40] Related notes:', relatedNotes.length);
+
+    // Generate synthesis using Gemini Nano
+    const stream = await window.geminiService.generateSynthesis(currentContext, relatedNotes);
+    log('🌊 [NOT-40] Stream received, starting output');
+
+    // Display streaming output
+    await displaySynthesisStream(stream, button);
+
+    // Re-enable button after completion
+    button.disabled = false;
+    button.classList.remove('loading');
+    buttonText.textContent = originalText;
+    log('✅ [NOT-40] Synthesis completed successfully');
+
+  } catch (error) {
+    error('❌ [NOT-40] Synthesis failed:', error);
+
+    // Show error message to user
+    const notesListEl = document.getElementById('notes-list');
+    const errorContainer = document.getElementById('synthesis-output');
+
+    if (errorContainer) {
+      errorContainer.innerHTML = `
+        <div class="synthesis-error">
+          <strong>Synthesis Failed</strong>
+          <p>${error.message || 'An unexpected error occurred. Please try again.'}</p>
+        </div>
+      `;
+    }
+
+    // Re-enable button
+    if (button) {
+      button.disabled = false;
+      button.classList.remove('loading');
+      const buttonText = button.querySelector('span');
+      if (buttonText) {
+        buttonText.textContent = 'Synthesize Connections';
+      }
+    }
+  }
+}
+
+/**
+ * [NOT-40] Display streaming synthesis output
+ * Consumes a ReadableStream and updates the DOM token-by-token
+ * @param {ReadableStream} stream - The AI-generated text stream
+ * @param {HTMLElement} button - The synthesize button element
+ */
+async function displaySynthesisStream(stream, button) {
+  log('🌊 [NOT-40] Starting synthesis stream display');
+
+  const notesListEl = document.getElementById('notes-list');
+  if (!notesListEl) {
+    error('❌ [NOT-40] Notes list element not found');
+    return;
+  }
+
+  // Find or create synthesis output container
+  let outputContainer = document.getElementById('synthesis-output');
+  if (!outputContainer) {
+    outputContainer = document.createElement('div');
+    outputContainer.id = 'synthesis-output';
+    outputContainer.className = 'synthesis-output';
+
+    // Insert right after the synthesize button
+    if (button && button.nextSibling) {
+      notesListEl.insertBefore(outputContainer, button.nextSibling);
+    } else {
+      notesListEl.insertBefore(outputContainer, notesListEl.firstChild);
+    }
+  }
+
+  // Clear previous content and show streaming cursor
+  outputContainer.innerHTML = '<div class="synthesis-content streaming"></div>';
+  const contentDiv = outputContainer.querySelector('.synthesis-content');
+
+  try {
+    let fullText = '';
+
+    // Consume the stream token by token
+    for await (const chunk of stream) {
+      fullText += chunk;
+
+      // Update the DOM with formatted content
+      contentDiv.innerHTML = formatMarkdown(fullText) + '<span class="streaming-cursor"></span>';
+
+      // Scroll to keep the output visible
+      contentDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Remove streaming cursor when done
+    contentDiv.classList.remove('streaming');
+    contentDiv.innerHTML = formatMarkdown(fullText);
+
+    log('✅ [NOT-40] Stream display completed');
+  } catch (error) {
+    error('❌ [NOT-40] Error displaying stream:', error);
+    contentDiv.innerHTML = `<div class="synthesis-error">Error displaying synthesis: ${error.message}</div>`;
+  }
+}
+
+/**
+ * [NOT-40] Format markdown text to HTML
+ * Handles basic markdown: bold, lists, paragraphs
+ * @param {string} text - Raw markdown text
+ * @returns {string} - HTML string
+ */
+function formatMarkdown(text) {
+  if (!text) return '';
+
+  // Escape HTML to prevent XSS
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Bold text: **text** or __text__
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+  // Italic text: *text* or _text_
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+  // Convert bullet points to list items
+  // Handle lines starting with - or *
+  const lines = html.split('\n');
+  let inList = false;
+  const processedLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Check if line is a bullet point
+    if (line.match(/^[-*]\s+/)) {
+      const content = line.replace(/^[-*]\s+/, '');
+
+      if (!inList) {
+        processedLines.push('<ul>');
+        inList = true;
+      }
+
+      processedLines.push(`<li>${content}</li>`);
+    } else {
+      // Not a bullet point
+      if (inList) {
+        processedLines.push('</ul>');
+        inList = false;
+      }
+
+      // Add as paragraph if not empty
+      if (line) {
+        processedLines.push(`<p>${line}</p>`);
+      }
+    }
+  }
+
+  // Close list if still open
+  if (inList) {
+    processedLines.push('</ul>');
+  }
+
+  return processedLines.join('');
+}
+
+/**
+ * [NOT-39] Show a temporary tooltip notification
+ * @param {HTMLElement} anchorElement - Element to position tooltip near
+ * @param {string} message - Message to display
+ */
+function showTooltip(anchorElement, message) {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'feedback-tooltip';
+  tooltip.textContent = message;
+  tooltip.style.cssText = `
+    position: fixed;
+    background: var(--color-text-primary);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    z-index: 1000;
+    pointer-events: none;
+    animation: enter-scale var(--duration-base) var(--ease-out-spring);
+  `;
+
+  // Position near the anchor element
+  const rect = anchorElement.getBoundingClientRect();
+  tooltip.style.top = `${rect.top}px`;
+  tooltip.style.left = `${rect.left + rect.width / 2}px`;
+  tooltip.style.transform = 'translateX(-50%)';
+
+  document.body.appendChild(tooltip);
+
+  // Remove after 2 seconds
+  setTimeout(() => {
+    tooltip.style.animation = 'exit-scale var(--duration-base) var(--ease-out-spring) forwards';
+    setTimeout(() => tooltip.remove(), 200);
+  }, 2000);
+}
+
+// =============================================================================
+// @SETTINGS - Config & API Keys
+// =============================================================================
+
+/**
+ * [NOT-40] Settings Mode - Shows Gemini Nano download status and settings
+ */
+async function renderSettingsMode() {
+  currentMode = 'settings';
+  navigateToView('settings-mode');
+
+  // [NOT-46] Set up OpenRouter API key handlers
+  await setupOpenRouterSettings();
+
+  // [NOT-40] Load and display Gemini Nano status
+  await updateGeminiStatusDisplay();
+
+  // [NOT-40] Start polling for status updates if downloading
+  startGeminiStatusPolling();
+}
+
+/**
+ * [NOT-46] Set up OpenRouter API key settings
+ * [NOT-51] Also handles preferred model selection
+ * Loads saved key, sets up event handlers for save/test/visibility toggle
+ */
+async function setupOpenRouterSettings() {
+  const apiKeyInput = document.getElementById('openrouter-api-key');
+  const toggleVisibilityButton = document.getElementById('toggle-api-key-visibility');
+  const saveButton = document.getElementById('save-settings-button');
+  const testButton = document.getElementById('test-api-key-button');
+  const statusDiv = document.getElementById('settings-status');
+  const modelSelector = document.getElementById('preferred-model-selector'); // [NOT-51]
+
+  if (!apiKeyInput || !saveButton || !testButton || !statusDiv || !modelSelector) {
+    error('[NOT-46] Settings DOM elements not found');
+    return;
+  }
+
+  /**
+   * Show status message
+   */
+  function showStatus(message, type = 'info') {
+    statusDiv.textContent = message;
+    statusDiv.className = `settings-status ${type}`;
+    statusDiv.classList.remove('hidden');
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      statusDiv.classList.add('hidden');
+    }, 5000);
+  }
+
+  /**
+   * Load saved API key
+   */
+  async function loadApiKey() {
+    try {
+      const { openRouterApiKey } = await chrome.storage.local.get('openRouterApiKey');
+      if (openRouterApiKey) {
+        apiKeyInput.value = openRouterApiKey;
+        log('[NOT-46] Loaded OpenRouter API key');
+      }
+    } catch (error) {
+      error('[NOT-46] Failed to load API key:', error);
+    }
+  }
+
+  /**
+   * [NOT-51] Populate model selector with available models
+   */
+  function populateModelSelector() {
+    try {
+      const models = window.aiHarness.getAvailableModels();
+
+      // Clear existing options
+      modelSelector.innerHTML = '';
+
+      // Add each model as an option
+      models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = model.name;
+        option.title = model.description; // Tooltip with description
+        modelSelector.appendChild(option);
+      });
+
+      log('[NOT-51] Populated model selector with', models.length, 'models');
+    } catch (error) {
+      error('[NOT-51] Failed to populate model selector:', error);
+    }
+  }
+
+  /**
+   * [NOT-51] Load saved preferred model
+   */
+  async function loadPreferredModel() {
+    try {
+      const { preferredModel } = await chrome.storage.local.get('preferredModel');
+      const modelId = preferredModel || 'auto'; // Default to 'auto'
+      modelSelector.value = modelId;
+      log('[NOT-51] Loaded preferred model:', modelId);
+    } catch (error) {
+      error('[NOT-51] Failed to load preferred model:', error);
+    }
+  }
+
+  /**
+   * Save API key and preferred model
+   * [NOT-51] Now also saves the preferred model selection
+   */
+  async function saveApiKey() {
+    const apiKey = apiKeyInput.value.trim();
+    const preferredModel = modelSelector.value; // [NOT-51]
+
+    if (!apiKey) {
+      showStatus('Please enter an API key', 'error');
+      return;
+    }
+
+    saveButton.disabled = true;
+
+    try {
+      // [NOT-51] Save both API key and preferred model
+      await chrome.storage.local.set({
+        openRouterApiKey: apiKey,
+        preferredModel: preferredModel
+      });
+      showStatus('Settings saved successfully!', 'success');
+      log('[NOT-46] API key saved');
+      log('[NOT-51] Preferred model saved:', preferredModel);
+    } catch (error) {
+      showStatus('Failed to save settings', 'error');
+      error('[NOT-46] Failed to save settings:', error);
+    } finally {
+      saveButton.disabled = false;
+    }
+  }
+
+  /**
+   * Test API key
+   */
+  async function testApiKey() {
+    const apiKey = apiKeyInput.value.trim();
+
+    if (!apiKey) {
+      showStatus('Please enter an API key first', 'error');
+      return;
+    }
+
+    testButton.disabled = true;
+    testButton.textContent = 'Testing...';
+
+    try {
+      // Save key temporarily for testing
+      await chrome.storage.local.set({ openRouterApiKey: apiKey });
+
+      // Initialize and test
+      await window.aiHarness.initialize('openrouter');
+      const isValid = await window.aiHarness.testProvider();
+
+      if (isValid) {
+        showStatus('✅ API key is valid!', 'success');
+      } else {
+        showStatus('❌ API key is invalid or connection failed', 'error');
+      }
+    } catch (error) {
+      showStatus('❌ Test failed: ' + error.message, 'error');
+      error('[NOT-46] API key test failed:', error);
+    } finally {
+      testButton.disabled = false;
+      testButton.textContent = 'Test Connection';
+    }
+  }
+
+  /**
+   * Toggle API key visibility
+   */
+  function toggleVisibility() {
+    if (apiKeyInput.type === 'password') {
+      apiKeyInput.type = 'text';
+      toggleVisibilityButton.textContent = '🙈';
+    } else {
+      apiKeyInput.type = 'password';
+      toggleVisibilityButton.textContent = '👁️';
+    }
+  }
+
+  // Set up event listeners (remove old ones first to avoid duplicates)
+  saveButton.removeEventListener('click', saveApiKey);
+  saveButton.addEventListener('click', saveApiKey);
+
+  testButton.removeEventListener('click', testApiKey);
+  testButton.addEventListener('click', testApiKey);
+
+  if (toggleVisibilityButton) {
+    toggleVisibilityButton.removeEventListener('click', toggleVisibility);
+    toggleVisibilityButton.addEventListener('click', toggleVisibility);
+  }
+
+  // Keyboard shortcut: Cmd/Ctrl + Enter to save
+  apiKeyInput.removeEventListener('keydown', handleKeydown);
+  apiKeyInput.addEventListener('keydown', handleKeydown);
+
+  function handleKeydown(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      saveApiKey();
+    }
+  }
+
+  // [NOT-51] Populate model selector and load saved preferences
+  populateModelSelector();
+  await loadApiKey();
+  await loadPreferredModel();
+}
+
+/**
+ * [NOT-40] Update the Gemini Nano status display in settings
+ */
+async function updateGeminiStatusDisplay() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'GET_GEMINI_STATUS' });
+    if (!response.success) {
+      error('[NOT-40] Failed to get Gemini status:', response.error);
+      return;
+    }
+
+    const status = response.status;
+    log('[NOT-40] Gemini status:', status);
+
+    const settingsContainer = document.getElementById('settings-mode');
+    const statusSection = settingsContainer.querySelector('.gemini-status-section') ||
+                          createGeminiStatusSection();
+
+    if (!settingsContainer.querySelector('.gemini-status-section')) {
+      // Clear placeholder and add status section
+      const emptyState = settingsContainer.querySelector('.empty-state');
+      if (emptyState) emptyState.remove();
+      settingsContainer.appendChild(statusSection);
+    }
+
+    updateStatusUI(statusSection, status);
+  } catch (error) {
+    error('[NOT-40] Error updating Gemini status:', error);
+  }
+}
+
+/**
+ * [NOT-40] [NOT-43] Create the Gemini status section UI
+ * Compact, modular layout that integrates seamlessly with other settings
+ * @private
+ */
+function createGeminiStatusSection() {
+  const section = document.createElement('div');
+  section.className = 'gemini-status-section';
+  section.innerHTML = `
+    <div class="settings-header">
+      <h2>AI Synthesis (Gemini Nano)</h2>
+      <p class="settings-description">On-device AI for generating insights from your notes</p>
+    </div>
+
+    <div class="status-card">
+      <div class="status-header">
+        <div class="status-icon"></div>
+        <div class="status-info">
+          <div class="status-title"></div>
+          <div class="status-message"></div>
+        </div>
+      </div>
+      <div class="status-progress hidden">
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+        <div class="progress-text"></div>
+      </div>
+      <div class="status-actions hidden">
+        <button id="initialize-gemini-button" class="primary-button">
+          Download Gemini Nano
+        </button>
+      </div>
+      <div class="status-error hidden">
+        <div class="error-message"></div>
+      </div>
+    </div>
+
+    <details class="settings-info">
+      <summary>Show system requirements</summary>
+      <div class="requirements-content">
+        <ul>
+          <li>Chrome 138+ (stable release)</li>
+          <li>22 GB free storage</li>
+          <li>16 GB RAM + 4 cores, OR 4 GB VRAM GPU</li>
+          <li>Windows 10+, macOS 13+, Linux, or ChromeOS</li>
+        </ul>
+      </div>
+    </details>
+  `;
+
+  // Wire up the initialize button
+  const initButton = section.querySelector('#initialize-gemini-button');
+  if (initButton) {
+    initButton.addEventListener('click', handleInitializeGemini);
+  }
+
+  return section;
+}
+
+/**
+ * [NOT-40] Update the status UI based on current state
+ * @private
+ */
+function updateStatusUI(section, status) {
+  const statusIcon = section.querySelector('.status-icon');
+  const statusTitle = section.querySelector('.status-title');
+  const statusMessage = section.querySelector('.status-message');
+  const statusProgress = section.querySelector('.status-progress');
+  const progressFill = section.querySelector('.progress-fill');
+  const progressText = section.querySelector('.progress-text');
+  const statusActions = section.querySelector('.status-actions');
+  const statusError = section.querySelector('.status-error');
+  const errorMessage = section.querySelector('.error-message');
+
+  // Hide all optional elements by default
+  statusProgress.classList.add('hidden');
+  statusActions.classList.add('hidden');
+  statusError.classList.add('hidden');
+
+  switch (status.status) {
+    case 'ready':
+      statusIcon.textContent = '✅';
+      statusTitle.textContent = 'Ready';
+      statusMessage.textContent = 'Gemini Nano is installed and ready to synthesize your notes.';
+      break;
+
+    case 'downloading':
+      statusIcon.textContent = '📥';
+      statusTitle.textContent = 'Downloading...';
+      statusMessage.textContent = 'Gemini Nano is being downloaded. This may take a few minutes.';
+      statusProgress.classList.remove('hidden');
+      const percentage = Math.round(status.progress * 100);
+      progressFill.style.width = `${percentage}%`;
+      progressText.textContent = `${percentage}% complete`;
+      break;
+
+    case 'checking':
+      statusIcon.textContent = '🔍';
+      statusTitle.textContent = 'Checking...';
+      statusMessage.textContent = 'Checking if Gemini Nano is available on your system.';
+      break;
+
+    case 'unavailable':
+      statusIcon.textContent = '⚠️';
+      statusTitle.textContent = 'Not Available';
+      statusMessage.textContent = 'Gemini Nano is not available on this system.';
+      statusError.classList.remove('hidden');
+      errorMessage.textContent = status.error || 'System does not meet requirements.';
+      break;
+
+    case 'error':
+      statusIcon.textContent = '❌';
+      statusTitle.textContent = 'Error';
+      statusMessage.textContent = 'Failed to initialize Gemini Nano.';
+      statusError.classList.remove('hidden');
+      errorMessage.textContent = status.error || 'Unknown error occurred.';
+      statusActions.classList.remove('hidden');
+      break;
+
+    case 'unknown':
+    default:
+      statusIcon.textContent = '⏳';
+      statusTitle.textContent = 'Unknown';
+      statusMessage.textContent = 'Gemini Nano status has not been checked yet.';
+      statusActions.classList.remove('hidden');
+      break;
+  }
+}
+
+/**
+ * [NOT-40] Handle Initialize Gemini button click
+ */
+async function handleInitializeGemini() {
+  const button = document.getElementById('initialize-gemini-button');
+  if (!button) return;
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Initializing...';
+
+  try {
+    log('[NOT-40] Manually triggering Gemini Nano initialization...');
+    const response = await chrome.runtime.sendMessage({ action: 'INITIALIZE_GEMINI' });
+
+    if (!response.success) {
+      throw new Error(response.error || 'Initialization failed');
+    }
+
+    log('[NOT-40] Gemini Nano initialization triggered successfully');
+    await updateGeminiStatusDisplay();
+
+  } catch (error) {
+    error('[NOT-40] Failed to initialize Gemini Nano:', error);
+    alert(`Failed to initialize Gemini Nano: ${error.message}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+/**
+ * [NOT-40] Start polling for Gemini status updates
+ * Polls every 2 seconds while downloading or checking
+ * Stops when status reaches a final state
+ * @private
+ */
+
+function startGeminiStatusPolling() {
+  // Clear any existing interval
+  if (geminiStatusPollInterval) {
+    clearInterval(geminiStatusPollInterval);
+  }
+
+  // Poll every 2 seconds
+  geminiStatusPollInterval = setInterval(async () => {
+    // Only poll if we're still on settings page
+    if (currentMode !== 'settings') {
+      clearInterval(geminiStatusPollInterval);
+      geminiStatusPollInterval = null;
+      log('[NOT-40] Stopped polling - left settings page');
+      return;
+    }
+
+    // Get current status
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'GET_GEMINI_STATUS' });
+      if (response.success) {
+        const status = response.status.status;
+
+        // Stop polling if we reached a final state
+        if (status === 'ready' || status === 'unavailable' || status === 'error') {
+          clearInterval(geminiStatusPollInterval);
+          geminiStatusPollInterval = null;
+          log(`[NOT-40] Stopped polling - final status reached: ${status}`);
+        }
+
+        // Update display
+        await updateGeminiStatusDisplay();
+      }
+    } catch (error) {
+      error('[NOT-40] Error polling Gemini status:', error);
+    }
+  }, 2000);
+}
+
+
+
+/**
+ * [NOT-39] Render hybrid view with "From this Page" and "Related Concepts" sections
+ * Used when context pill is clicked in semantic or hybrid state
+ * @param {HTMLElement} notesListEl - The notes list container element
+ */
+
+
+
+
+
 /**
  * Utilities
  */
@@ -4939,3 +4879,190 @@ function formatDate(timestamp) {
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
   });
 }
+
+/**
+ * [NOT-31] Expand or collapse all note cards with proper UI updates
+ * @param {boolean} expand - True to expand, false to collapse
+ */
+function setAllNotesExpanded(expand) {
+  isExpandedAll = expand;
+
+  const noteCards = document.querySelectorAll('.note-card');
+  noteCards.forEach(card => {
+    if (expand) {
+      card.classList.add('expanded');
+      card.setAttribute('aria-expanded', 'true');
+    } else {
+      card.classList.remove('expanded');
+      card.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // Update expand button icon
+  const expandButton = document.getElementById('expand-all-button');
+  if (expandButton) {
+    const iconUse = expandButton.querySelector('use');
+    if (expand) {
+      iconUse?.setAttribute('href', '#icon-minimize');
+      expandButton.setAttribute('title', 'Collapse all notes');
+      expandButton.setAttribute('aria-label', 'Collapse all notes');
+    } else {
+      iconUse?.setAttribute('href', '#icon-maximize');
+      expandButton.setAttribute('title', 'Expand all notes');
+      expandButton.setAttribute('aria-label', 'Expand all notes');
+    }
+  }
+}
+
+// =============================================================================
+// @INIT - Global Event Listeners & Boot
+// =============================================================================
+
+// Initialize on DOM load
+document.addEventListener('DOMContentLoaded', async () => {
+  log('🎯 Initializing panel...');
+
+  // [NOT-16] Set up create note button listener
+  const createNoteButton = document.getElementById('create-note-button');
+  if (createNoteButton) {
+    createNoteButton.addEventListener('click', handleCreateNote);
+  }
+
+  // [NOT-16] Set up capture mode event listeners (once)
+  const notesInput = document.getElementById('capture-notes');
+  const saveButton = document.getElementById('save-button');
+
+  // Keyboard shortcut (Cmd+Enter to save)
+  if (notesInput) {
+    notesInput.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        saveButton.click();
+      }
+    });
+  }
+
+  // Save button click handler
+  if (saveButton) {
+    saveButton.addEventListener('click', () => {
+      handleSaveClip(window.currentClipData || {});
+    });
+  }
+
+  // [NOT-33] Image upload button handler
+  const uploadImageButton = document.getElementById('upload-image-button');
+  const imageUploadInput = document.getElementById('image-upload-input');
+
+  if (uploadImageButton && imageUploadInput) {
+    uploadImageButton.addEventListener('click', () => {
+      imageUploadInput.click();
+    });
+
+    imageUploadInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFileUpload(e.target.files, false);
+        // Reset input so same file can be selected again
+        e.target.value = '';
+      }
+    });
+  }
+
+  // [NOT-33] [NOT-36] Webpage image capture button handler - wrap to pass buttonId
+  const captureWebpageImageButton = document.getElementById('capture-webpage-image-button');
+  if (captureWebpageImageButton) {
+    captureWebpageImageButton.addEventListener('click', () => activateWebCaptureMode('capture-webpage-image-button'));
+  }
+
+  // [NOT-34] Navigation button handlers
+  const libraryButton = document.getElementById('library-button');
+  const aiButton = document.getElementById('ai-button');
+  const settingsButton = document.getElementById('settings-button');
+
+  if (libraryButton) {
+    libraryButton.addEventListener('click', renderLibraryMode);
+  }
+  if (aiButton) {
+    aiButton.addEventListener('click', renderAIChatMode);
+  }
+  if (settingsButton) {
+    settingsButton.addEventListener('click', renderSettingsMode);
+  }
+
+  // [NOT-31] Listen for tab changes to refresh contextual recall pill
+  chrome.tabs.onActivated.addListener(async () => {
+    if (currentMode === 'library') {
+      await checkContextualRecall();
+    }
+  });
+
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+    if (changeInfo.url && currentMode === 'library') {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (activeTab && activeTab.id === tabId) {
+        await checkContextualRecall();
+      }
+    }
+  });
+
+  try {
+    // Run data migration (if needed)
+    await window.database.migrateFromChromeStorage();
+
+    // [NOT-38] Auto-reindex for semantic search on first run
+    await checkAndReindexIfNeeded();
+
+    // Load persisted filter state
+    await loadFilterState();
+
+    // Check for pending clip data from chrome.storage.local
+    const { pendingClipData } = await chrome.storage.local.get('pendingClipData');
+
+    if (pendingClipData) {
+      log('📋 Found pending clip data, rendering Capture Mode');
+      renderCaptureMode(pendingClipData);
+    } else {
+      log('⏳ No pending data yet, waiting for it or showing library...');
+
+      // Set up listener for when pendingClipData arrives
+      let timeoutId = setTimeout(() => {
+        log('📚 No clip data received, showing Library Mode');
+        renderLibraryMode();
+      }, 500); // Wait 500ms for data to arrive
+
+      // [NOT-36] Listen for storage changes (boot-time listener only for initial capture)
+      // Web capture listening mode is now handled by dedicated listener in activateWebCaptureMode
+      const listener = (changes, area) => {
+        if (area === 'local' && changes.pendingClipData && changes.pendingClipData.newValue) {
+          const newClipData = changes.pendingClipData.newValue;
+
+          // [NOT-36] Web capture mode is now handled by dedicated listener
+          // This boot-time listener only handles normal flow (new clip data rendering)
+          if (!isWebCaptureListening) {
+            log('📋 Pending clip data arrived, rendering Capture Mode');
+            clearTimeout(timeoutId);
+            chrome.storage.onChanged.removeListener(listener);
+            renderCaptureMode(newClipData);
+          }
+          // If in web capture listening mode, the dedicated listener will handle it
+        }
+      };
+
+      chrome.storage.onChanged.addListener(listener);
+    }
+
+    // [NOT-40] Check Gemini Nano availability for AI synthesis
+    try {
+      geminiAvailable = await window.geminiService.checkAvailability();
+      if (geminiAvailable) {
+        log('✅ [NOT-40] Gemini Nano is available for synthesis');
+      } else {
+        log('⚠️  [NOT-40] Gemini Nano is not available. Synthesis features will be disabled.');
+      }
+    } catch (error) {
+      error('❌ [NOT-40] Error checking Gemini availability:', error);
+      geminiAvailable = false;
+    }
+  } catch (error) {
+    error('❌ Error initializing panel:', error);
+  }
+});
