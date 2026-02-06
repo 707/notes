@@ -620,6 +620,85 @@ function showPillWithAnimation(pillElement, state = 'exact') {
 }
 
 /**
+ * [NOT-60] Update Stack Chip - shows active context for Assistant Bar
+ * Displays current context based on filterState and filteredNotes count
+ * Format: "[ Current Page ] + [ N Notes ]" or similar variations
+ * @returns {void}
+ */
+function updateStackChip() {
+  const stackChip = document.getElementById('stack-chip');
+  const stackChipText = stackChip?.querySelector('.stack-chip-text');
+
+  if (!stackChip || !stackChipText) return;
+
+  // Build context description parts
+  const contextParts = [];
+  let hasActiveContext = false;
+
+  // Check for context filter (page URL filter)
+  if (filterState.contextFilter) {
+    hasActiveContext = true;
+    // Try to get page title if available
+    contextParts.push('Current Page');
+  }
+
+  // Check for other active filters
+  const otherFilters = [];
+  if (filterState.starred) otherFilters.push('Starred');
+  if (filterState.readLater) otherFilters.push('Read Later');
+  if (filterState.tags && filterState.tags.length > 0) {
+    otherFilters.push(`${filterState.tags.length} Tag${filterState.tags.length === 1 ? '' : 's'}`);
+  }
+  if (filterState.search && filterState.search.trim()) {
+    otherFilters.push('Search');
+  }
+
+  if (otherFilters.length > 0) {
+    hasActiveContext = true;
+    contextParts.push(otherFilters.join(' + '));
+  }
+
+  // If there's active context, show the chip with note count
+  if (hasActiveContext && filteredNotes.length > 0) {
+    const noteCount = `${filteredNotes.length} Note${filteredNotes.length === 1 ? '' : 's'}`;
+
+    if (contextParts.length > 0) {
+      stackChipText.textContent = `${contextParts.join(' + ')} • ${noteCount}`;
+    } else {
+      stackChipText.textContent = noteCount;
+    }
+
+    stackChip.classList.remove('hidden');
+  } else {
+    // No active context or no filtered notes
+    stackChip.classList.add('hidden');
+  }
+}
+
+/**
+ * [NOT-60] Clear stack context - removes all active filters
+ * @returns {void}
+ */
+function clearStackContext() {
+  // Clear all filters
+  filterState.contextFilter = null;
+  filterState.tags = [];
+  filterState.readLater = false;
+  filterState.starred = false;
+  filterState.search = '';
+
+  // Clear search input
+  const filterInput = document.getElementById('filter-input');
+  if (filterInput) filterInput.value = '';
+
+  // Save and re-render
+  saveFilterState();
+  renderNotesList();
+  renderActiveFilters();
+  updateStackChip();
+}
+
+/**
  * [NOT-34] Navigate to a specific view and update header button states
  * @param {string} viewId - The view to navigate to (library-mode, ai-chat-mode, settings-mode, capture-mode)
  */
@@ -2352,6 +2431,9 @@ async function renderLibraryMode() {
 
   // Update placeholder based on current filter state
   updatePlaceholder();
+
+  // [NOT-60] Update Stack Chip based on active context
+  updateStackChip();
 }
 
 function setupLibraryEventListeners() {
@@ -2378,6 +2460,67 @@ function setupLibraryEventListeners() {
       }
     });
   }
+
+  // [NOT-60] Stack Chip remove button
+  const stackChipRemove = document.querySelector('.stack-chip-remove');
+  if (stackChipRemove) {
+    stackChipRemove.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent bubbling
+      clearStackContext();
+    });
+  }
+
+  // [NOT-60] Assistant Bar input handlers
+  const assistantInput = document.getElementById('assistant-input');
+  const sendAssistantButton = document.getElementById('send-assistant-button');
+
+  if (assistantInput) {
+    // Auto-resize textarea as user types
+    assistantInput.addEventListener('input', () => {
+      assistantInput.style.height = 'auto';
+      assistantInput.style.height = assistantInput.scrollHeight + 'px';
+
+      // Enable/disable send button based on input
+      if (sendAssistantButton) {
+        sendAssistantButton.disabled = !assistantInput.value.trim();
+      }
+    });
+
+    // Send message on Cmd/Ctrl + Enter
+    assistantInput.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (assistantInput.value.trim()) {
+          handleSendAssistantMessage();
+        }
+      }
+    });
+  }
+
+  if (sendAssistantButton) {
+    sendAssistantButton.addEventListener('click', handleSendAssistantMessage);
+  }
+
+  // [NOT-60] Onboarding Chips - Auto-fill Assistant Bar
+  const onboardingChips = document.querySelectorAll('.onboarding-chip');
+  onboardingChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const prompt = chip.dataset.prompt;
+      if (prompt && assistantInput) {
+        assistantInput.value = prompt;
+        assistantInput.focus();
+
+        // Trigger input event to enable send button and resize textarea
+        assistantInput.dispatchEvent(new Event('input'));
+
+        // Scroll to assistant bar
+        const assistantBar = document.querySelector('.assistant-bar');
+        if (assistantBar) {
+          assistantBar.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+      }
+    });
+  });
 
   // Filter input focus/blur
   filterInput.addEventListener('focus', () => {
@@ -2891,6 +3034,9 @@ function renderNotesList() {
   }
 
   log(`📝 Rendered ${filteredNotes.length} notes`);
+
+  // [NOT-60] Update Stack Chip to reflect current filtered state
+  updateStackChip();
 }
 
 function createNoteCard(note, index = 0) {
@@ -4097,6 +4243,124 @@ function handleDownloadImage(imageData) {
 // =============================================================================
 // @AI - Chat, Contextual Recall & Synthesis
 // =============================================================================
+
+/**
+ * [NOT-60] Assemble RAG context from filtered notes (the "Stack")
+ * Gathers text from all notes currently in the context/filter
+ * @returns {string} - Formatted context string for AI
+ */
+function assembleRAGContext() {
+  if (filteredNotes.length === 0) {
+    return '';
+  }
+
+  // Limit context to prevent token overflow
+  const maxNotes = 10; // Limit to top 10 notes
+  const notesToInclude = filteredNotes.slice(0, maxNotes);
+
+  // Format each note as a context block
+  const contextBlocks = notesToInclude.map((note, index) => {
+    const parts = [];
+
+    // Add source info
+    parts.push(`[Note ${index + 1}]`);
+    if (note.metadata?.title) {
+      parts.push(`Title: ${note.metadata.title}`);
+    }
+    if (note.metadata?.siteName) {
+      parts.push(`Source: ${note.metadata.siteName}`);
+    }
+
+    // Add note content
+    if (note.text) {
+      // Strip HTML tags and limit length
+      const textContent = note.text.replace(/<[^>]*>/g, '').trim();
+      const maxLength = 500; // Limit each note to 500 chars
+      const truncated = textContent.length > maxLength
+        ? textContent.substring(0, maxLength) + '...'
+        : textContent;
+      parts.push(`Content: ${truncated}`);
+    }
+
+    // Add user notes if present
+    if (note.userNote) {
+      parts.push(`My Note: ${note.userNote}`);
+    }
+
+    // Add tags if present
+    if (note.tags && note.tags.length > 0) {
+      parts.push(`Tags: ${note.tags.join(', ')}`);
+    }
+
+    return parts.join('\n');
+  });
+
+  // Assemble final context
+  const contextHeader = `I have ${filteredNotes.length} note${filteredNotes.length === 1 ? '' : 's'} in my context${filteredNotes.length > maxNotes ? ` (showing first ${maxNotes})` : ''}:\n\n`;
+  return contextHeader + contextBlocks.join('\n\n---\n\n');
+}
+
+/**
+ * [NOT-60] Handle sending message from Assistant Bar
+ * Gathers RAG context from filtered notes and transitions to AI Chat mode
+ * @returns {Promise<void>}
+ */
+async function handleSendAssistantMessage() {
+  const assistantInput = document.getElementById('assistant-input');
+  const sendButton = document.getElementById('send-assistant-button');
+
+  if (!assistantInput || !sendButton) return;
+
+  const userMessage = assistantInput.value.trim();
+  if (!userMessage) return;
+
+  try {
+    // Disable input during processing
+    assistantInput.disabled = true;
+    sendButton.disabled = true;
+
+    // Assemble RAG context from filtered notes
+    const ragContext = assembleRAGContext();
+
+    // Build the full message with context
+    let fullMessage = userMessage;
+    if (ragContext) {
+      fullMessage = `${ragContext}\n\nQuestion: ${userMessage}`;
+    }
+
+    // Clear the assistant input
+    assistantInput.value = '';
+    assistantInput.style.height = 'auto';
+
+    // Navigate to AI Chat mode and send the message
+    await renderAIChatMode();
+
+    // Get chat elements
+    const chatInput = document.getElementById('chat-input');
+    const sendChatButton = document.getElementById('send-chat-button');
+
+    if (chatInput && sendChatButton) {
+      // Set the message in the chat input
+      chatInput.value = fullMessage;
+
+      // Trigger input event to enable send button and resize textarea
+      chatInput.dispatchEvent(new Event('input'));
+
+      // Auto-send the message
+      setTimeout(() => {
+        sendChatButton.click();
+      }, 100);
+    }
+
+  } catch (error) {
+    error('[NOT-60] Failed to send assistant message:', error);
+    alert('Failed to send message. Please try again.');
+  } finally {
+    // Re-enable input
+    assistantInput.disabled = false;
+    sendButton.disabled = false;
+  }
+}
 
 /**
  * [NOT-34] AI Chat Mode

@@ -876,6 +876,164 @@ body {
 .empty-state p {
   font-size: var(--font-size-base);
   max-width: 300px;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* [NOT-60] Onboarding Chips - Cold Start UX */
+.onboarding-chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 320px;
+}
+
+.onboarding-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.onboarding-chip:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.onboarding-chip:active {
+  transform: translateY(0);
+}
+
+.onboarding-chip .icon {
+  flex-shrink: 0;
+}
+
+/* [NOT-60] Assistant Bar - Unified Context Chat */
+.assistant-bar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+/* [NOT-60] Stack Chip - Active Context Indicator */
+.stack-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-primary-light);
+  border-bottom: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  animation: enter-slide var(--duration-base) var(--ease-out-spring);
+}
+
+.stack-chip.hidden {
+  display: none;
+}
+
+.stack-chip-text {
+  flex: 1;
+}
+
+.stack-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.stack-chip-remove:hover {
+  background: var(--color-primary-subtle);
+}
+
+.stack-chip-remove:active {
+  transform: scale(0.95);
+}
+
+/* [NOT-60] Assistant Input Area */
+.assistant-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+}
+
+.assistant-input {
+  flex: 1;
+  min-height: 40px;
+  max-height: 120px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  resize: none;
+  overflow-y: auto;
+  transition: border-color var(--transition-fast);
+}
+
+.assistant-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.assistant-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.send-assistant-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.send-assistant-button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: scale(1.05);
+}
+
+.send-assistant-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.send-assistant-button:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
 }
 
 /* [NOT-34] Placeholder Views (Settings) */

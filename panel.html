@@ -342,12 +342,29 @@
 
       <div id="notes-list" class="notes-list">
         <!-- Empty state -->
+        <!-- [NOT-60] Cold Start UX with Onboarding Chips -->
         <div id="empty-state" class="empty-state">
           <div class="empty-icon">
             <svg class="icon icon-xxl"><use href="#icon-file-text"></use></svg>
           </div>
-          <h2>No clips yet</h2>
-          <p>Highlight text on any webpage and right-click to start capturing knowledge.</p>
+          <h2>Your brain is empty</h2>
+          <p>Start capturing knowledge, or ask the assistant to help you:</p>
+
+          <!-- [NOT-60] Onboarding Chips -->
+          <div class="onboarding-chips">
+            <button class="onboarding-chip" data-prompt="Help me organize my research notes">
+              <svg class="icon icon-sm"><use href="#icon-sparkle"></use></svg>
+              <span>Organize notes</span>
+            </button>
+            <button class="onboarding-chip" data-prompt="Summarize the key points from my reading">
+              <svg class="icon icon-sm"><use href="#icon-sparkle"></use></svg>
+              <span>Draft summary</span>
+            </button>
+            <button class="onboarding-chip" data-prompt="Find connections between my ideas">
+              <svg class="icon icon-sm"><use href="#icon-sparkle"></use></svg>
+              <span>Find connections</span>
+            </button>
+          </div>
         </div>
 
         <!-- Search empty state -->
@@ -360,6 +377,32 @@
         </div>
 
         <!-- Notes will be rendered here -->
+      </div>
+
+      <!-- [NOT-60] Unified Assistant Bar -->
+      <div class="assistant-bar">
+        <!-- [NOT-60] Stack Chip - Active Context Indicator -->
+        <div id="stack-chip" class="stack-chip hidden">
+          <svg class="icon icon-sm"><use href="#icon-file-text"></use></svg>
+          <span class="stack-chip-text"></span>
+          <button class="stack-chip-remove" title="Clear context" aria-label="Clear context">
+            <svg class="icon icon-xs"><use href="#icon-x"></use></svg>
+          </button>
+        </div>
+
+        <!-- [NOT-60] Assistant Input Area -->
+        <div class="assistant-input-area">
+          <textarea
+            id="assistant-input"
+            class="assistant-input"
+            placeholder="Ask about your notes..."
+            rows="1"
+            aria-label="Assistant message input"
+          ></textarea>
+          <button id="send-assistant-button" class="send-assistant-button" title="Send message" aria-label="Send message" disabled>
+            <svg class="icon icon-sm"><use href="#icon-arrow-right"></use></svg>
+          </button>
+        </div>
       </div>
     </div>
 
