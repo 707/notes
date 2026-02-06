@@ -1874,7 +1874,7 @@ function renderDynamicSourceBar(clipData, sourceBar) {
 }
 
 /**
- * [NOT-58] [NOT-59] Render repository stats for GitHub repos
+ * [NOT-58] Render repository stats for GitHub repos
  *
  * @param {Object} metadata - The flexible metadata object
  * @param {HTMLElement} container - The container to append to
@@ -1882,20 +1882,11 @@ function renderDynamicSourceBar(clipData, sourceBar) {
 function renderRepoStats(metadata, container) {
   const statsWrapper = document.createElement('div');
   statsWrapper.className = 'repo-stats';
-  statsWrapper.style.display = 'flex';
-  statsWrapper.style.gap = 'var(--spacing-md)';
-  statsWrapper.style.fontSize = 'var(--font-size-sm)';
-  statsWrapper.style.color = 'var(--color-text-secondary)';
-
-  let hasContent = false;
 
   // Stars count
-  if (metadata.stars !== undefined && metadata.stars !== 'not available') {
+  if (metadata.stars !== undefined) {
     const starsElement = document.createElement('div');
     starsElement.className = 'repo-stat';
-    starsElement.style.display = 'flex';
-    starsElement.style.alignItems = 'center';
-    starsElement.style.gap = 'var(--spacing-xs)';
     starsElement.innerHTML = `
       <svg class="icon icon-sm" style="color: var(--color-warning);">
         <use href="#icon-star"></use>
@@ -1903,16 +1894,12 @@ function renderRepoStats(metadata, container) {
       <span>${formatNumber(metadata.stars)}</span>
     `;
     statsWrapper.appendChild(starsElement);
-    hasContent = true;
   }
 
   // Language
   if (metadata.language) {
     const languageElement = document.createElement('div');
     languageElement.className = 'repo-stat';
-    languageElement.style.display = 'flex';
-    languageElement.style.alignItems = 'center';
-    languageElement.style.gap = 'var(--spacing-xs)';
 
     const languageDot = document.createElement('span');
     languageDot.className = 'language-dot';
@@ -1924,135 +1911,55 @@ function renderRepoStats(metadata, container) {
     languageElement.appendChild(languageDot);
     languageElement.appendChild(languageText);
     statsWrapper.appendChild(languageElement);
-    hasContent = true;
   }
 
-  // [NOT-59] Difficulty level (AI-extracted)
-  if (metadata.difficulty) {
-    const difficultyElement = document.createElement('div');
-    difficultyElement.className = 'repo-stat';
-    difficultyElement.style.display = 'flex';
-    difficultyElement.style.alignItems = 'center';
-    difficultyElement.style.gap = 'var(--spacing-xs)';
-
-    const difficultyEmoji = {
-      'beginner': '🟢',
-      'intermediate': '🟡',
-      'advanced': '🔴'
-    }[metadata.difficulty.toLowerCase()] || '⚪';
-
-    difficultyElement.textContent = `${difficultyEmoji} ${metadata.difficulty}`;
-    statsWrapper.appendChild(difficultyElement);
-    hasContent = true;
-  }
-
-  // Only append if we have at least one stat
-  if (hasContent) {
-    container.appendChild(statsWrapper);
-  }
+  container.appendChild(statsWrapper);
 }
 
 /**
- * [NOT-58] [NOT-59] Render video metadata (duration, channel, etc.)
+ * [NOT-58] Render video timestamp information
  *
  * @param {Object} metadata - The flexible metadata object
  * @param {HTMLElement} container - The container to append to
  */
 function renderVideoTimestamp(metadata, container) {
-  const videoMetadata = document.createElement('div');
-  videoMetadata.className = 'video-metadata';
-  videoMetadata.style.display = 'flex';
-  videoMetadata.style.gap = 'var(--spacing-md)';
-  videoMetadata.style.fontSize = 'var(--font-size-sm)';
-  videoMetadata.style.color = 'var(--color-text-secondary)';
-
-  let hasContent = false;
-
-  // Duration
-  if (metadata.duration) {
-    const durationSpan = document.createElement('span');
-    durationSpan.textContent = `⏱️ ${metadata.duration}`;
-    videoMetadata.appendChild(durationSpan);
-    hasContent = true;
+  if (!metadata.duration) {
+    return;
   }
 
-  // [NOT-59] Channel name (AI-extracted)
-  if (metadata.channel) {
-    const channelSpan = document.createElement('span');
-    channelSpan.textContent = `📺 ${metadata.channel}`;
-    videoMetadata.appendChild(channelSpan);
-    hasContent = true;
-  }
+  const timestampElement = document.createElement('div');
+  timestampElement.className = 'video-timestamp';
 
-  // [NOT-59] Difficulty level (AI-extracted)
-  if (metadata.difficulty) {
-    const difficultySpan = document.createElement('span');
-    const difficultyEmoji = {
-      'beginner': '🟢',
-      'intermediate': '🟡',
-      'advanced': '🔴'
-    }[metadata.difficulty.toLowerCase()] || '⚪';
-    difficultySpan.textContent = `${difficultyEmoji} ${metadata.difficulty}`;
-    videoMetadata.appendChild(difficultySpan);
-    hasContent = true;
-  }
+  const durationText = document.createElement('span');
+  durationText.textContent = `Duration: ${metadata.duration}`;
+  durationText.style.fontSize = 'var(--font-size-sm)';
+  durationText.style.color = 'var(--color-text-secondary)';
 
-  // Only append if we have at least one piece of metadata
-  if (hasContent) {
-    container.appendChild(videoMetadata);
-  }
+  timestampElement.appendChild(durationText);
+  container.appendChild(timestampElement);
 }
 
 /**
- * [NOT-58] [NOT-59] Render reading time and other article metadata
+ * [NOT-58] Render reading time for articles
  *
  * @param {Object} metadata - The flexible metadata object
  * @param {HTMLElement} container - The container to append to
  */
 function renderReadingTime(metadata, container) {
-  const articleMetadata = document.createElement('div');
-  articleMetadata.className = 'article-metadata';
-  articleMetadata.style.display = 'flex';
-  articleMetadata.style.gap = 'var(--spacing-md)';
-  articleMetadata.style.fontSize = 'var(--font-size-sm)';
-  articleMetadata.style.color = 'var(--color-text-secondary)';
-
-  let hasContent = false;
-
-  // Reading time
-  if (metadata.readingTime) {
-    const readingTimeSpan = document.createElement('span');
-    readingTimeSpan.textContent = `📖 ${metadata.readingTime}`;
-    articleMetadata.appendChild(readingTimeSpan);
-    hasContent = true;
+  if (!metadata.readingTime) {
+    return;
   }
 
-  // [NOT-59] Difficulty level (AI-extracted)
-  if (metadata.difficulty) {
-    const difficultySpan = document.createElement('span');
-    const difficultyEmoji = {
-      'beginner': '🟢',
-      'intermediate': '🟡',
-      'advanced': '🔴'
-    }[metadata.difficulty.toLowerCase()] || '⚪';
-    difficultySpan.textContent = `${difficultyEmoji} ${metadata.difficulty}`;
-    difficultySpan.style.textTransform = 'capitalize';
-    articleMetadata.appendChild(difficultySpan);
-    hasContent = true;
-  }
+  const readingTimeElement = document.createElement('div');
+  readingTimeElement.className = 'reading-time';
 
-  // [NOT-59] Category (AI-extracted)
-  if (metadata.category) {
-    const categorySpan = document.createElement('span');
-    categorySpan.textContent = `🏷️ ${metadata.category}`;
-    articleMetadata.appendChild(categorySpan);
-    hasContent = true;
-  }
+  const timeText = document.createElement('span');
+  timeText.textContent = `📖 ${metadata.readingTime}`;
+  timeText.style.fontSize = 'var(--font-size-sm)';
+  timeText.style.color = 'var(--color-text-secondary)';
 
-  // Only append if we have at least one piece of metadata
-  if (hasContent) {
-    container.appendChild(articleMetadata);
-  }
+  readingTimeElement.appendChild(timeText);
+  container.appendChild(readingTimeElement);
 }
 
 /**
