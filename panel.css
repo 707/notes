@@ -560,10 +560,10 @@ body {
 }
 
 /* [NOT-34] Fixed filter bar at top (flex layout keeps it in place) */
-/* [NOT-66] Remove horizontal padding for edge-to-edge inputs */
+/* [NOT-66] No padding - header wraps tightly around filter components */
 .library-header {
   flex-shrink: 0;
-  padding: var(--spacing-sm) 0;
+  padding: 0;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
@@ -975,12 +975,12 @@ body {
 }
 
 /* [NOT-60] Assistant Input Area */
-/* [NOT-66] Remove horizontal padding for edge-to-edge layout */
+/* [NOT-66] No padding - container wraps tightly around input and button */
 .assistant-input-area {
   display: flex;
   align-items: flex-end;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) 0;
+  padding: 0;
 }
 
 .assistant-input {
