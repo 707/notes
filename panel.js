@@ -3136,45 +3136,13 @@ function setupStackMenuEventListeners() {
   }
 }
 
+/**
+ * [NOT-72] Populate filter dropdown with sort and system filters only
+ * Tags are now managed via Stack Menu and Stack Context Bar
+ */
 function populateFilterDropdown() {
-  // Populate tags in dropdown
-  const tagsListEl = document.getElementById('filter-tags-list');
-  tagsListEl.innerHTML = '';
-
-  // Extract unique tags
-  const uniqueTags = new Set();
-  allNotes.forEach(note => {
-    note.tags.forEach(tag => uniqueTags.add(tag));
-  });
-
-  if (uniqueTags.size === 0) {
-    // Hide tags section if no tags
-    document.getElementById('tags-filter-section').style.display = 'none';
-  } else {
-    document.getElementById('tags-filter-section').style.display = 'block';
-    uniqueTags.forEach(tag => {
-      const option = document.createElement('div');
-      option.className = 'filter-option';
-      option.dataset.type = 'tag';
-      option.dataset.value = tag;
-      option.setAttribute('role', 'menuitem');
-      option.setAttribute('tabindex', '0');
-
-      // [NOT-18] Create icon element safely
-      const iconSpan = document.createElement('span');
-      iconSpan.className = 'filter-option-icon';
-      iconSpan.textContent = '#';
-
-      // [NOT-18] Use textContent to prevent XSS from malicious tag names
-      const tagText = document.createTextNode(tag.replace('#', ''));
-
-      option.appendChild(iconSpan);
-      option.appendChild(tagText);
-      tagsListEl.appendChild(option);
-    });
-  }
-
-  // [NOT-26] Update active state for Read Later filter option
+  // [NOT-72] Tag population removed - tags now managed via Stack Menu
+  // Only update active states for remaining filters (sort, starred, read later)
   updateFilterDropdownActiveStates();
 }
 
@@ -3216,18 +3184,7 @@ function updateFilterDropdownActiveStates() {
     }
   });
 
-  // Update Tag options
-  const tagOptions = filterDropdown.querySelectorAll('[data-type="tag"]');
-  tagOptions.forEach(option => {
-    const isActive = filterState.tags.some(
-      filterTag => filterTag.toLowerCase() === option.dataset.value.toLowerCase()
-    );
-    if (isActive) {
-      option.classList.add('active');
-    } else {
-      option.classList.remove('active');
-    }
-  });
+  // [NOT-72] Tag options removed - tags now managed via Stack Menu
 }
 
 function filterAndRenderNotes() {
