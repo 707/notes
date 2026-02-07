@@ -99,76 +99,7 @@ body {
   gap: var(--spacing-sm);
 }
 
-/* [NOT-31] Contextual Recall Pill */
-.context-pill {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background: var(--color-primary-subtle);
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary-light);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--duration-micro) var(--ease-out-spring);
-  user-select: none;
-}
-
-.context-pill:hover {
-  background: var(--color-primary-light);
-  border-color: var(--color-primary);
-  transform: translateX(-50%) scale(1.05);
-}
-
-.context-pill:active {
-  transform: translateX(-50%) scale(0.98);
-}
-
-/* [NOT-31] Animation plays only once on first appearance */
-.context-pill.animate {
-  animation: enter-slide var(--duration-slow) var(--ease-out-spring);
-}
-
-/* [NOT-31] Active state when filter is applied */
-.context-pill.active {
-  background: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-}
-
-.context-pill.active:hover {
-  background: var(--color-primary-hover);
-}
-
-/* [NOT-39] Pulse state for semantic matches */
-.context-pill.pulse {
-  background: var(--color-surface);
-  color: var(--color-ai-primary);
-  border-color: var(--color-ai-primary);
-  animation: pulse-purple 2s var(--ease-out-spring) infinite;
-}
-
-.context-pill.pulse:hover {
-  background: var(--color-ai-surface);
-  animation: none;
-}
-
-/* [NOT-39] Pulse animation for semantic state */
-@keyframes pulse-purple {
-  0%, 100% {
-    border-color: var(--color-ai-primary);
-    box-shadow: 0 0 0 0 var(--color-ai-surface);
-  }
-  50% {
-    border-color: var(--color-ai-primary);
-    box-shadow: 0 0 0 4px var(--color-ai-surface);
-  }
-}
+/* [NOT-68] Contextual Recall Pill styles removed - replaced by Stack Context Bar */
 
 .menu-logo {
   width: 24px;
@@ -793,6 +724,42 @@ body {
   transform: scale(0.95);
 }
 
+/* [NOT-68] Search Escape Hatch */
+.search-escape-hatch {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.escape-hatch-text {
+  color: var(--color-text-secondary);
+}
+
+.escape-hatch-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: color var(--duration-micro) var(--ease-out-spring);
+}
+
+.escape-hatch-link:hover {
+  color: var(--color-primary-hover);
+}
+
+.escape-hatch-link:active {
+  color: var(--color-primary-active);
+}
+
 /* Screen Reader Only */
 .sr-only {
   position: absolute;
@@ -924,46 +891,135 @@ body {
   background: var(--color-surface);
 }
 
-/* [NOT-60] Stack Chip - Active Context Indicator */
-.stack-chip {
+/* [NOT-68] Stack Context Bar - Unified Context UI */
+.stack-context-bar {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-primary-light);
-  border-bottom: 1px solid var(--color-primary);
-  color: var(--color-primary);
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.stack-context-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.stack-context-bar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stack-context-bar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.stack-context-bar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-medium);
+}
+
+/* [NOT-68] Base Stack Chip Styles */
+.stack-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   font-weight: 500;
-  animation: enter-slide var(--duration-base) var(--ease-out-spring);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--duration-micro) var(--ease-out-spring);
+  user-select: none;
 }
 
-.stack-chip.hidden {
-  display: none;
+.stack-chip:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-medium);
 }
 
-.stack-chip-text {
-  flex: 1;
+.stack-chip:active {
+  transform: scale(0.98);
 }
 
-.stack-chip-remove {
-  display: flex;
+/* [NOT-68] "This Page" Chip (Toggleable) */
+.stack-chip-page {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+.stack-chip-page.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.stack-chip-page.active:hover {
+  background: var(--color-primary-hover);
+}
+
+/* [NOT-68] Tag Chips (Removable) */
+.stack-chip-tag {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.stack-chip-tag:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+.stack-chip-tag .remove {
+  margin-left: var(--spacing-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* [NOT-68] Ghost Chips (Suggestions) */
+.stack-chip-ghost {
+  background: transparent;
+  border-style: dashed;
+  color: var(--color-text-tertiary);
+}
+
+.stack-chip-ghost:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border-style: solid;
+}
+
+/* [NOT-68] Add Button ("#" button) */
+.stack-add-button {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-xs);
-  background: none;
-  border: none;
-  color: var(--color-primary);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+  font-weight: 600;
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
+  transition: all var(--duration-micro) var(--ease-out-spring);
 }
 
-.stack-chip-remove:hover {
+.stack-add-button:hover {
   background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
-.stack-chip-remove:active {
+.stack-add-button:active {
   transform: scale(0.95);
 }
 

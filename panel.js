@@ -602,59 +602,187 @@ function showPillWithAnimation(pillElement, state = 'exact') {
 }
 
 /**
- * [NOT-60] Update Stack Chip - shows active context for Assistant Bar
- * Displays current context based on filterState and filteredNotes count
- * Format: "[ Current Page ] + [ N Notes ]" or similar variations
+ * [NOT-68] Render Stack Context Bar - Unified context UI for Library and Chat
+ * Displays active context as chips: "This Page", active tags, starred/read later, and suggestions
+ * @param {string} containerId - The container element ID ('library-stack-context' or 'chat-stack-context')
  * @returns {void}
  */
-function updateStackChip() {
-  const stackChip = document.getElementById('stack-chip');
-  const stackChipText = stackChip?.querySelector('.stack-chip-text');
+async function renderStackContextBar(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
 
-  if (!stackChip || !stackChipText) return;
+  // Clear existing content
+  container.innerHTML = '';
 
-  // Build context description parts
-  const contextParts = [];
-  let hasActiveContext = false;
-
-  // Check for context filter (page URL filter)
-  if (filterState.contextFilter) {
-    hasActiveContext = true;
-    // Try to get page title if available
-    contextParts.push('Current Page');
+  // Get current URL for "This Page" chip
+  let currentUrl = null;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.url) {
+      currentUrl = tab.url;
+    }
+  } catch (error) {
+    warn('[NOT-68] Could not get current URL:', error);
   }
 
-  // Check for other active filters
-  const otherFilters = [];
-  if (filterState.starred) otherFilters.push('Starred');
-  if (filterState.readLater) otherFilters.push('Read Later');
-  if (filterState.tags && filterState.tags.length > 0) {
-    otherFilters.push(`${filterState.tags.length} Tag${filterState.tags.length === 1 ? '' : 's'}`);
-  }
-  if (filterState.search && filterState.search.trim()) {
-    otherFilters.push('Search');
-  }
+  // 1. Render "This Page" chip (always show, toggleable)
+  if (currentUrl) {
+    const pageChip = document.createElement('button');
+    pageChip.className = 'stack-chip stack-chip-page';
+    pageChip.setAttribute('data-type', 'page');
+    pageChip.setAttribute('title', 'Filter to notes from this page');
 
-  if (otherFilters.length > 0) {
-    hasActiveContext = true;
-    contextParts.push(otherFilters.join(' + '));
-  }
+    // Check if active
+    const isActive = filterState.contextFilter &&
+      (filterState.contextFilter === currentUrl ||
+       (currentUrl.includes('://') && new URL(currentUrl).hostname === filterState.contextFilter));
 
-  // If there's active context, show the chip with note count
-  if (hasActiveContext && filteredNotes.length > 0) {
-    const noteCount = `${filteredNotes.length} Note${filteredNotes.length === 1 ? '' : 's'}`;
-
-    if (contextParts.length > 0) {
-      stackChipText.textContent = `${contextParts.join(' + ')} • ${noteCount}`;
-    } else {
-      stackChipText.textContent = noteCount;
+    if (isActive) {
+      pageChip.classList.add('active');
     }
 
-    stackChip.classList.remove('hidden');
-  } else {
-    // No active context or no filtered notes
-    stackChip.classList.add('hidden');
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('class', 'icon icon-sm');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#icon-file-text');
+    icon.appendChild(use);
+
+    const text = document.createElement('span');
+    text.textContent = 'This Page';
+
+    pageChip.appendChild(icon);
+    pageChip.appendChild(text);
+    container.appendChild(pageChip);
   }
+
+  // 2. Render active Tag chips (removable)
+  if (filterState.tags && filterState.tags.length > 0) {
+    filterState.tags.forEach(tag => {
+      const tagChip = document.createElement('div');
+      tagChip.className = 'stack-chip stack-chip-tag';
+      tagChip.setAttribute('data-type', 'tag');
+      tagChip.setAttribute('data-value', tag);
+
+      const text = document.createElement('span');
+      text.textContent = tag;
+
+      const remove = document.createElement('span');
+      remove.className = 'remove';
+      remove.textContent = '×';
+      remove.setAttribute('title', `Remove ${tag}`);
+
+      tagChip.appendChild(text);
+      tagChip.appendChild(remove);
+      container.appendChild(tagChip);
+    });
+  }
+
+  // 3. Render Starred chip if active
+  if (filterState.starred) {
+    const starredChip = document.createElement('div');
+    starredChip.className = 'stack-chip stack-chip-tag';
+    starredChip.setAttribute('data-type', 'starred');
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('class', 'icon icon-sm');
+    const use = document.createElementNS('http://www.w3.org/1999/xlink', 'use');
+    use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#icon-star');
+    icon.appendChild(use);
+
+    const text = document.createElement('span');
+    text.textContent = 'Starred';
+
+    const remove = document.createElement('span');
+    remove.className = 'remove';
+    remove.textContent = '×';
+    remove.setAttribute('title', 'Remove starred filter');
+
+    starredChip.appendChild(icon);
+    starredChip.appendChild(text);
+    starredChip.appendChild(remove);
+    container.appendChild(starredChip);
+  }
+
+  // 4. Render Read Later chip if active
+  if (filterState.readLater) {
+    const readLaterChip = document.createElement('div');
+    readLaterChip.className = 'stack-chip stack-chip-tag';
+    readLaterChip.setAttribute('data-type', 'readLater');
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('class', 'icon icon-sm');
+    const use = document.createElementNS('http://www.w3.org/1999/xlink', 'use');
+    use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#icon-clock');
+    icon.appendChild(use);
+
+    const text = document.createElement('span');
+    text.textContent = 'Read Later';
+
+    const remove = document.createElement('span');
+    remove.className = 'remove';
+    remove.textContent = '×';
+    remove.setAttribute('title', 'Remove read later filter');
+
+    readLaterChip.appendChild(icon);
+    readLaterChip.appendChild(text);
+    readLaterChip.appendChild(remove);
+    container.appendChild(readLaterChip);
+  }
+
+  // 5. Render "#" Add button
+  const addButton = document.createElement('button');
+  addButton.className = 'stack-add-button';
+  addButton.textContent = '#';
+  addButton.setAttribute('title', 'Add filter');
+  addButton.setAttribute('data-action', 'add-filter');
+  container.appendChild(addButton);
+
+  // 6. Render Ghost chips (Top 3 suggested tags not currently active)
+  const allTags = await getAllTags();
+  const activeTags = new Set(filterState.tags || []);
+  const suggestedTags = allTags
+    .filter(tag => !activeTags.has(tag))
+    .slice(0, 3);
+
+  suggestedTags.forEach(tag => {
+    const ghostChip = document.createElement('button');
+    ghostChip.className = 'stack-chip stack-chip-ghost';
+    ghostChip.setAttribute('data-type', 'ghost-tag');
+    ghostChip.setAttribute('data-value', tag);
+    ghostChip.textContent = tag;
+    ghostChip.setAttribute('title', `Filter by ${tag}`);
+    container.appendChild(ghostChip);
+  });
+}
+
+/**
+ * [NOT-68] Update all Stack Context Bars
+ * Refreshes both library and chat stack context bars
+ * @returns {void}
+ */
+async function updateContextBars() {
+  await renderStackContextBar('library-stack-context');
+  await renderStackContextBar('chat-stack-context');
+}
+
+/**
+ * [NOT-68] Get all unique tags from notes (sorted by usage frequency)
+ * @returns {Promise<string[]>} Array of tags sorted by frequency
+ */
+async function getAllTags() {
+  const tagCounts = {};
+
+  allNotes.forEach(note => {
+    if (note.tags && Array.isArray(note.tags)) {
+      note.tags.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+    }
+  });
+
+  return Object.entries(tagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag);
 }
 
 /**
@@ -677,7 +805,84 @@ function clearStackContext() {
   saveFilterState();
   renderNotesList();
   renderActiveFilters();
-  updateStackChip();
+  updateContextBars();
+}
+
+/**
+ * [NOT-68] Toggle "This Page" context filter
+ * Sets filterState.contextFilter to current URL or null
+ * @returns {Promise<void>}
+ */
+async function togglePageContext() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) return;
+
+    const currentUrl = tab.url;
+
+    // Toggle: if already active, deactivate
+    const isCurrentlyActive = filterState.contextFilter &&
+      (filterState.contextFilter === currentUrl ||
+       (currentUrl.includes('://') && new URL(currentUrl).hostname === filterState.contextFilter));
+
+    if (isCurrentlyActive) {
+      // Deactivate
+      filterState.contextFilter = null;
+      setAllNotesExpanded(false);
+    } else {
+      // Activate - use full URL for exact matching
+      filterState.contextFilter = currentUrl;
+
+      // Auto-expand notes when activating context filter
+      setTimeout(() => setAllNotesExpanded(true), 0);
+    }
+
+    // Save and re-render
+    await saveFilterState();
+    filterAndRenderNotes();
+  } catch (error) {
+    error('[NOT-68] Error toggling page context:', error);
+  }
+}
+
+/**
+ * [NOT-68] Toggle tag filter
+ * Adds or removes a tag from filterState.tags
+ * @param {string} tag - The tag to toggle
+ * @returns {void}
+ */
+function toggleTagFilter(tag) {
+  if (!tag) return;
+
+  const index = filterState.tags.indexOf(tag);
+  if (index > -1) {
+    // Remove tag
+    filterState.tags.splice(index, 1);
+  } else {
+    // Add tag
+    filterState.tags.push(tag);
+  }
+
+  // Save and re-render
+  saveFilterState();
+  filterAndRenderNotes();
+}
+
+/**
+ * [NOT-68] Toggle system filter (Starred or Read Later)
+ * @param {string} type - The filter type ('starred' or 'readLater')
+ * @returns {void}
+ */
+function toggleSystemFilter(type) {
+  if (type === 'starred') {
+    filterState.starred = !filterState.starred;
+  } else if (type === 'readLater') {
+    filterState.readLater = !filterState.readLater;
+  }
+
+  // Save and re-render
+  saveFilterState();
+  filterAndRenderNotes();
 }
 
 /**
@@ -733,96 +938,7 @@ function navigateToView(viewId) {
  * For semantic/hybrid states: renders special hybrid view with sections
  * When deactivating: clears the filter
  */
-async function handleContextPillClick() {
-  try {
-    const pillElement = document.getElementById('context-pill');
-
-    // [NOT-34] If not in library mode, navigate to library first
-    if (currentMode !== 'library') {
-      // Set up the filter before navigating
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab || !tab.url) return;
-
-      const currentUrl = tab.url;
-
-      // [NOT-39] [NOT-67] For semantic state, just navigate and render hybrid view
-      if (contextMatchType === 'semantic') {
-        pillElement?.classList.add('active');
-        await renderLibraryMode();
-        // Hybrid view will be rendered automatically by renderNotesList
-        return;
-      }
-
-      // Set filter based on match type for exact/domain
-      if (contextMatchType === 'exact') {
-        filterState.contextFilter = currentUrl;
-      } else if (contextMatchType === 'domain') {
-        const url = new URL(currentUrl);
-        filterState.contextFilter = url.hostname;
-      }
-
-      pillElement?.classList.add('active');
-
-      // Navigate to library with filter active
-      await renderLibraryMode();
-
-      // Auto-expand after navigation
-      setTimeout(() => setAllNotesExpanded(true), 0);
-
-      await saveFilterState();
-      return;
-    }
-
-    // [NOT-41] Toggle filter state (when already in library)
-    // Check DOM active class instead of match type to determine if pill is active
-    if (pillElement?.classList.contains('active')) {
-      // Deactivate filter
-      filterState.contextFilter = null;
-      pillElement?.classList.remove('active');
-      setAllNotesExpanded(false);
-    } else {
-      // Activate filter
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab || !tab.url) return;
-
-      const currentUrl = tab.url;
-
-      // [NOT-39] [NOT-67] For semantic state, set active and render hybrid view
-      if (contextMatchType === 'semantic') {
-        pillElement?.classList.add('active');
-        // Hybrid view will be rendered automatically by renderNotesList
-        filterAndRenderNotes();
-        return;
-      }
-
-      // Set filter based on match type for exact/domain
-      if (contextMatchType === 'exact') {
-        filterState.contextFilter = currentUrl;
-      } else if (contextMatchType === 'domain') {
-        const url = new URL(currentUrl);
-        filterState.contextFilter = url.hostname;
-      }
-
-      pillElement?.classList.add('active');
-
-      // [NOT-36] Auto-expand notes when activating context filter
-      setAllNotesExpanded(true);
-    }
-
-    // Apply filter and re-render
-    filterAndRenderNotes();
-
-    // Auto-expand all notes after rendering if filter is active
-    if (filterState.contextFilter) {
-      setTimeout(() => setAllNotesExpanded(true), 0);
-    }
-
-    // Save filter state
-    await saveFilterState();
-  } catch (error) {
-    error('[NOT-31] [NOT-39] Error handling context pill click:', error);
-  }
-}
+// [NOT-68] handleContextPillClick removed - replaced by Stack Context Bar actions
 
 // =============================================================================
 // @CAPTURE - Saving notes & Multi-image logic
@@ -2411,8 +2527,8 @@ async function renderLibraryMode() {
   // Render active filters
   renderActiveFilters();
 
-  // [NOT-60] Update Stack Chip based on active context
-  updateStackChip();
+  // [NOT-68] Update Stack Context Bars based on active context
+  updateContextBars();
 }
 
 function setupLibraryEventListeners() {
@@ -2426,26 +2542,54 @@ function setupLibraryEventListeners() {
     expandAllButton.addEventListener('click', handleToggleExpandAll);
   }
 
-  // [NOT-31] Context pill click and keyboard handlers
-  const contextPill = document.getElementById('context-pill');
-  if (contextPill) {
-    contextPill.addEventListener('click', handleContextPillClick);
+  // [NOT-68] Stack Context Bar event delegation
+  const libraryStackContext = document.getElementById('library-stack-context');
+  if (libraryStackContext) {
+    libraryStackContext.addEventListener('click', async (e) => {
+      const target = e.target.closest('.stack-chip, .stack-add-button, .remove');
 
-    // Keyboard accessibility: Enter and Space keys
-    contextPill.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleContextPillClick();
+      if (!target) return;
+
+      // Handle "This Page" chip toggle
+      if (target.classList.contains('stack-chip-page')) {
+        await togglePageContext();
+        return;
       }
-    });
-  }
 
-  // [NOT-60] Stack Chip remove button
-  const stackChipRemove = document.querySelector('.stack-chip-remove');
-  if (stackChipRemove) {
-    stackChipRemove.addEventListener('click', (e) => {
-      e.stopPropagation(); // Prevent bubbling
-      clearStackContext();
+      // Handle tag chip removal (click on X)
+      if (target.classList.contains('remove')) {
+        const chipElement = target.closest('.stack-chip');
+        const type = chipElement?.getAttribute('data-type');
+        const value = chipElement?.getAttribute('data-value');
+
+        if (type === 'tag' && value) {
+          toggleTagFilter(value);
+        } else if (type === 'starred') {
+          toggleSystemFilter('starred');
+        } else if (type === 'readLater') {
+          toggleSystemFilter('readLater');
+        }
+        return;
+      }
+
+      // Handle ghost chip activation (click on suggested tag)
+      if (target.classList.contains('stack-chip-ghost')) {
+        const tag = target.getAttribute('data-value');
+        if (tag) {
+          toggleTagFilter(tag);
+        }
+        return;
+      }
+
+      // Handle Add button (show filter dropdown)
+      if (target.classList.contains('stack-add-button')) {
+        const filterInput = document.getElementById('filter-input');
+        if (filterInput) {
+          filterInput.focus();
+          filterInput.click(); // Trigger dropdown
+        }
+        return;
+      }
     });
   }
 
@@ -2620,6 +2764,28 @@ function setupLibraryEventListeners() {
     updateFilterDropdownActiveStates();
     saveFilterState();
   });
+
+  // [NOT-68] Search escape hatch - "Search all notes" button
+  const searchAllNotesButton = document.getElementById('search-all-notes-button');
+  if (searchAllNotesButton) {
+    searchAllNotesButton.addEventListener('click', () => {
+      // Clear all filters except search text
+      const currentSearch = filterState.search;
+      filterState.contextFilter = null;
+      filterState.tags = [];
+      filterState.readLater = false;
+      filterState.starred = false;
+      filterState.search = currentSearch; // Keep search text
+
+      // Re-render
+      filterAndRenderNotes();
+      renderActiveFilters();
+      updateContextBars();
+      saveFilterState();
+
+      log('[NOT-68] Cleared context filters, keeping search:', currentSearch);
+    });
+  }
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -2827,6 +2993,23 @@ function filterAndRenderNotes() {
   // Update search input placeholder
   updatePlaceholder();
 
+  // [NOT-68] Show/hide search escape hatch
+  const escapeHatch = document.getElementById('search-escape-hatch');
+  if (escapeHatch) {
+    // Show if: searching AND has active context (page, tags, starred, or read later)
+    const hasActiveContext = filterState.contextFilter ||
+                             filterState.tags.length > 0 ||
+                             filterState.starred ||
+                             filterState.readLater;
+    const isSearching = filterState.search && filterState.search.trim().length > 0;
+
+    if (isSearching && hasActiveContext) {
+      escapeHatch.classList.remove('hidden');
+    } else {
+      escapeHatch.classList.add('hidden');
+    }
+  }
+
   renderNotesList();
 }
 
@@ -3015,8 +3198,8 @@ function renderNotesList() {
 
   log(`📝 Rendered ${filteredNotes.length} notes`);
 
-  // [NOT-60] Update Stack Chip to reflect current filtered state
-  updateStackChip();
+  // [NOT-68] Update Stack Context Bars to reflect current filtered state
+  updateContextBars();
 }
 
 function createNoteCard(note, index = 0) {
@@ -4500,12 +4683,98 @@ async function renderAIChatMode() {
       chatInput.value = '';
       chatInput.style.height = 'auto';
 
+      // [NOT-68] Build context from Stack (filtered notes + page content)
+      let contextPrompt = '';
+
+      // Get filtered notes (excluding search filter for context)
+      let contextNotes = [...allNotes];
+
+      // Apply context filters (same as filterAndRenderNotes but without search)
+      if (filterState.contextFilter) {
+        contextNotes = contextNotes.filter(note => {
+          if (!note.url) return false;
+          if (filterState.contextFilter.startsWith('http')) {
+            return note.url === filterState.contextFilter;
+          }
+          try {
+            const noteUrl = new URL(note.url);
+            return noteUrl.hostname === filterState.contextFilter;
+          } catch (e) {
+            return false;
+          }
+        });
+      }
+
+      if (filterState.tags.length > 0) {
+        contextNotes = contextNotes.filter(note =>
+          filterState.tags.some(filterTag =>
+            note.tags.some(noteTag =>
+              noteTag.toLowerCase() === filterTag.toLowerCase()
+            )
+          )
+        );
+      }
+
+      if (filterState.readLater) {
+        contextNotes = contextNotes.filter(note => note.readLater === true);
+      }
+
+      if (filterState.starred) {
+        contextNotes = contextNotes.filter(note => note.starred === true);
+      }
+
+      // Build context prompt if there are filtered notes or page context
+      if (contextNotes.length > 0 || filterState.contextFilter) {
+        const contextParts = [];
+
+        // Add filtered notes context
+        if (contextNotes.length > 0) {
+          contextParts.push(`You have access to ${contextNotes.length} note${contextNotes.length === 1 ? '' : 's'} from the user's library:`);
+
+          contextNotes.slice(0, 10).forEach((note, i) => {
+            const noteText = note.userNote || note.text || '';
+            const truncated = noteText.length > 200 ? noteText.substring(0, 200) + '...' : noteText;
+            const tags = note.tags && note.tags.length > 0 ? ` (Tags: ${note.tags.join(', ')})` : '';
+            contextParts.push(`\n${i + 1}. ${note.metadata.title || 'Untitled'}${tags}\n   ${truncated}`);
+          });
+
+          if (contextNotes.length > 10) {
+            contextParts.push(`\n... and ${contextNotes.length - 10} more notes.`);
+          }
+        }
+
+        // Add current page context if active
+        if (filterState.contextFilter) {
+          try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab?.url) {
+              contextParts.push(`\n\nCurrent Page Context:\n- Title: ${tab.title || 'Unknown'}\n- URL: ${tab.url}`);
+            }
+          } catch (e) {
+            warn('[NOT-68] Could not get current tab info:', e);
+          }
+        }
+
+        if (contextParts.length > 0) {
+          contextPrompt = contextParts.join('\n');
+          log('[NOT-68] Built context prompt with', contextNotes.length, 'notes');
+        }
+      }
+
       // Get message history for context
       const messages = await window.database.getChatHistory(currentChatId);
       const messageHistory = messages.map(m => ({
         role: m.role,
         content: m.content
       }));
+
+      // [NOT-68] Prepend context as system message if available
+      if (contextPrompt) {
+        messageHistory.unshift({
+          role: 'system',
+          content: contextPrompt
+        });
+      }
 
       // Create AI message bubble with streaming cursor
       const aiContentDiv = renderMessage('assistant', '');
@@ -4625,6 +4894,72 @@ async function renderAIChatMode() {
 
   clearButton.removeEventListener('click', clearChat);
   clearButton.addEventListener('click', clearChat);
+
+  // [NOT-68] Stack Context Bar event delegation for Chat
+  const chatStackContext = document.getElementById('chat-stack-context');
+  if (chatStackContext) {
+    // Remove old listener if exists
+    const oldHandler = chatStackContext._stackHandler;
+    if (oldHandler) {
+      chatStackContext.removeEventListener('click', oldHandler);
+    }
+
+    // Create new handler
+    const stackHandler = async (e) => {
+      const target = e.target.closest('.stack-chip, .stack-add-button, .remove');
+
+      if (!target) return;
+
+      // Handle "This Page" chip toggle
+      if (target.classList.contains('stack-chip-page')) {
+        await togglePageContext();
+        return;
+      }
+
+      // Handle tag chip removal (click on X)
+      if (target.classList.contains('remove')) {
+        const chipElement = target.closest('.stack-chip');
+        const type = chipElement?.getAttribute('data-type');
+        const value = chipElement?.getAttribute('data-value');
+
+        if (type === 'tag' && value) {
+          toggleTagFilter(value);
+        } else if (type === 'starred') {
+          toggleSystemFilter('starred');
+        } else if (type === 'readLater') {
+          toggleSystemFilter('readLater');
+        }
+        return;
+      }
+
+      // Handle ghost chip activation (click on suggested tag)
+      if (target.classList.contains('stack-chip-ghost')) {
+        const tag = target.getAttribute('data-value');
+        if (tag) {
+          toggleTagFilter(tag);
+        }
+        return;
+      }
+
+      // Handle Add button (show filter dropdown)
+      if (target.classList.contains('stack-add-button')) {
+        const filterInput = document.getElementById('filter-input');
+        if (filterInput) {
+          // Navigate to library to access filter UI
+          await renderLibraryMode();
+          setTimeout(() => {
+            filterInput.focus();
+            filterInput.click();
+          }, 100);
+        }
+        return;
+      }
+    };
+
+    // Store handler reference and add listener
+    chatStackContext._stackHandler = stackHandler;
+    chatStackContext.addEventListener('click', stackHandler);
+  }
 
   // Load chat on mount
   await loadChat();

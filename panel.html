@@ -133,11 +133,7 @@
         </button>
       </div>
 
-      <!-- [NOT-31] Contextual Recall Pill - shown when user has notes for current page -->
-      <div id="context-pill" class="context-pill hidden" role="button" tabindex="0" aria-label="Filter notes for current page">
-        <svg class="icon icon-md"><use href="#icon-file-text"></use></svg>
-        <span class="pill-text"></span>
-      </div>
+      <!-- [NOT-68] Context pill removed - replaced by Stack Context Bar -->
 
       <!-- [NOT-34] Right Navigation: AI + Settings -->
       <div class="menu-right">
@@ -293,6 +289,12 @@
             </button>
           </div>
 
+          <!-- [NOT-68] Search Escape Hatch -->
+          <div id="search-escape-hatch" class="search-escape-hatch hidden">
+            <span class="escape-hatch-text">Searching in context.</span>
+            <button id="search-all-notes-button" class="escape-hatch-link">Search all notes?</button>
+          </div>
+
           <!-- Filter Dropdown (hidden by default) -->
           <div id="filter-dropdown" class="filter-dropdown hidden" role="menu">
             <div class="filter-section">
@@ -381,14 +383,8 @@
 
       <!-- [NOT-60] Unified Assistant Bar -->
       <div class="assistant-bar">
-        <!-- [NOT-60] Stack Chip - Active Context Indicator -->
-        <div id="stack-chip" class="stack-chip hidden">
-          <svg class="icon icon-sm"><use href="#icon-file-text"></use></svg>
-          <span class="stack-chip-text"></span>
-          <button class="stack-chip-remove" title="Clear context" aria-label="Clear context">
-            <svg class="icon icon-xs"><use href="#icon-x"></use></svg>
-          </button>
-        </div>
+        <!-- [NOT-68] Stack Context Bar - Active Context Indicator -->
+        <div id="library-stack-context" class="stack-context-bar"></div>
 
         <!-- [NOT-60] Assistant Input Area -->
         <div class="assistant-input-area">
@@ -427,6 +423,9 @@
           <p>Ask me anything about your notes, get summaries, or have a conversation.</p>
         </div>
       </div>
+
+      <!-- [NOT-68] Stack Context Bar for Chat -->
+      <div id="chat-stack-context" class="stack-context-bar"></div>
 
       <!-- Chat Input -->
       <div class="chat-input-area">
