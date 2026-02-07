@@ -786,6 +786,112 @@ async function getAllTags() {
 }
 
 /**
+ * [NOT-68] Get filtered notes based on Stack context (excluding search filter)
+ * Shared helper to avoid logic duplication between Library and Chat
+ * @returns {Array} Filtered notes array
+ */
+function getStackFilteredNotes() {
+  let filtered = [...allNotes];
+
+  // Apply context filter (page URL filter)
+  if (filterState.contextFilter) {
+    filtered = filtered.filter(note => {
+      if (!note.url) return false;
+
+      // Exact URL match (if filter contains protocol)
+      if (filterState.contextFilter.startsWith('http')) {
+        return note.url === filterState.contextFilter;
+      }
+
+      // Domain match (extract hostname from note URL)
+      try {
+        const noteUrl = new URL(note.url);
+        return noteUrl.hostname === filterState.contextFilter;
+      } catch (e) {
+        return false;
+      }
+    });
+  }
+
+  // Apply tag filters (case-insensitive)
+  if (filterState.tags.length > 0) {
+    filtered = filtered.filter(note =>
+      filterState.tags.some(filterTag =>
+        note.tags.some(noteTag =>
+          noteTag.toLowerCase() === filterTag.toLowerCase()
+        )
+      )
+    );
+  }
+
+  // Apply Read Later filter
+  if (filterState.readLater) {
+    filtered = filtered.filter(note => note.readLater === true);
+  }
+
+  // Apply Starred filter
+  if (filterState.starred) {
+    filtered = filtered.filter(note => note.starred === true);
+  }
+
+  return filtered;
+}
+
+/**
+ * [NOT-68] Get page text content from current tab
+ * Used for injecting page content into AI chat context
+ * @param {number} tabId - The tab ID to extract content from
+ * @returns {Promise<string|null>} Page text content (truncated to 8k chars) or null
+ */
+async function getPageTextContent(tabId) {
+  try {
+    // Execute script to get page text
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        // Extract main content text, excluding scripts and styles
+        const body = document.body;
+        if (!body) return null;
+
+        // Remove script and style elements from clone
+        const clone = body.cloneNode(true);
+        const scripts = clone.querySelectorAll('script, style, noscript');
+        scripts.forEach(el => el.remove());
+
+        // Get text content
+        let text = clone.innerText || clone.textContent || '';
+
+        // Clean up whitespace
+        text = text
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .join('\n');
+
+        return text;
+      }
+    });
+
+    if (!results || !results[0] || !results[0].result) {
+      return null;
+    }
+
+    let pageText = results[0].result;
+
+    // Truncate to ~8k characters (as per spec)
+    const MAX_LENGTH = 8000;
+    if (pageText.length > MAX_LENGTH) {
+      pageText = pageText.substring(0, MAX_LENGTH) + '\n\n[Content truncated...]';
+    }
+
+    return pageText;
+  } catch (error) {
+    warn('[NOT-68] Failed to get page text content:', error);
+    return null;
+  }
+}
+
+/**
  * [NOT-60] Clear stack context - removes all active filters
  * @returns {void}
  */
@@ -2918,30 +3024,10 @@ function updateFilterDropdownActiveStates() {
 }
 
 function filterAndRenderNotes() {
-  // Start with all notes
-  filteredNotes = [...allNotes];
+  // [NOT-68] Use shared helper for stack filters (context, tags, starred, readLater)
+  filteredNotes = getStackFilteredNotes();
 
-  // [NOT-31] Apply context filter first (if active) with precise matching
-  if (filterState.contextFilter) {
-    filteredNotes = filteredNotes.filter(note => {
-      if (!note.url) return false;
-
-      // Exact URL match (if filter contains protocol)
-      if (filterState.contextFilter.startsWith('http')) {
-        return note.url === filterState.contextFilter;
-      }
-
-      // Domain match (extract hostname from note URL)
-      try {
-        const noteUrl = new URL(note.url);
-        return noteUrl.hostname === filterState.contextFilter;
-      } catch (e) {
-        return false;
-      }
-    });
-  }
-
-  // Apply search filter
+  // Apply search filter (on top of stack filters)
   if (filterState.search) {
     filteredNotes = filteredNotes.filter(note => {
       const searchableText = [
@@ -2953,27 +3039,6 @@ function filterAndRenderNotes() {
 
       return searchableText.includes(filterState.search);
     });
-  }
-
-  // [NOT-26] Apply tag filters (case-insensitive)
-  if (filterState.tags.length > 0) {
-    filteredNotes = filteredNotes.filter(note =>
-      filterState.tags.some(filterTag =>
-        note.tags.some(noteTag =>
-          noteTag.toLowerCase() === filterTag.toLowerCase()
-        )
-      )
-    );
-  }
-
-  // [NOT-18] Apply Read Later filter
-  if (filterState.readLater) {
-    filteredNotes = filteredNotes.filter(note => note.readLater === true);
-  }
-
-  // [NOT-35] Apply Starred filter
-  if (filterState.starred) {
-    filteredNotes = filteredNotes.filter(note => note.starred === true);
   }
 
   // Apply sort
@@ -4686,42 +4751,8 @@ async function renderAIChatMode() {
       // [NOT-68] Build context from Stack (filtered notes + page content)
       let contextPrompt = '';
 
-      // Get filtered notes (excluding search filter for context)
-      let contextNotes = [...allNotes];
-
-      // Apply context filters (same as filterAndRenderNotes but without search)
-      if (filterState.contextFilter) {
-        contextNotes = contextNotes.filter(note => {
-          if (!note.url) return false;
-          if (filterState.contextFilter.startsWith('http')) {
-            return note.url === filterState.contextFilter;
-          }
-          try {
-            const noteUrl = new URL(note.url);
-            return noteUrl.hostname === filterState.contextFilter;
-          } catch (e) {
-            return false;
-          }
-        });
-      }
-
-      if (filterState.tags.length > 0) {
-        contextNotes = contextNotes.filter(note =>
-          filterState.tags.some(filterTag =>
-            note.tags.some(noteTag =>
-              noteTag.toLowerCase() === filterTag.toLowerCase()
-            )
-          )
-        );
-      }
-
-      if (filterState.readLater) {
-        contextNotes = contextNotes.filter(note => note.readLater === true);
-      }
-
-      if (filterState.starred) {
-        contextNotes = contextNotes.filter(note => note.starred === true);
-      }
+      // [NOT-68] Use shared helper to get filtered notes (excluding search filter)
+      const contextNotes = getStackFilteredNotes();
 
       // Build context prompt if there are filtered notes or page context
       if (contextNotes.length > 0 || filterState.contextFilter) {
@@ -4743,15 +4774,22 @@ async function renderAIChatMode() {
           }
         }
 
-        // Add current page context if active
+        // [NOT-68] Add current page context with actual page content if active
         if (filterState.contextFilter) {
           try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (tab?.url) {
+            if (tab?.url && tab?.id) {
               contextParts.push(`\n\nCurrent Page Context:\n- Title: ${tab.title || 'Unknown'}\n- URL: ${tab.url}`);
+
+              // [NOT-68] Get actual page text content (truncated to 8k chars)
+              const pageText = await getPageTextContent(tab.id);
+              if (pageText) {
+                contextParts.push(`\n- Page Content:\n${pageText}`);
+                log('[NOT-68] Injected page content:', pageText.length, 'chars');
+              }
             }
           } catch (e) {
-            warn('[NOT-68] Could not get current tab info:', e);
+            warn('[NOT-68] Could not get current page info:', e);
           }
         }
 
