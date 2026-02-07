@@ -830,6 +830,7 @@ body {
 }
 
 /* [NOT-68] Stack Context Bar - Unified Context UI */
+/* [NOT-73] Restructured with pinned controls and scrollable tags */
 .stack-context-bar {
   display: flex;
   align-items: center;
@@ -837,25 +838,41 @@ body {
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--color-surface-secondary);
   border-bottom: 1px solid var(--color-border);
+}
+
+/* [NOT-73] Pinned section - # button and This Page chip */
+.stack-pinned {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+/* [NOT-73] Scrollable section - tags and system filters */
+.stack-scroll {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-grow: 1;
   overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
 }
 
-.stack-context-bar::-webkit-scrollbar {
+.stack-scroll::-webkit-scrollbar {
   height: 4px;
 }
 
-.stack-context-bar::-webkit-scrollbar-track {
+.stack-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.stack-context-bar::-webkit-scrollbar-thumb {
+.stack-scroll::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: var(--radius-full);
 }
 
-.stack-context-bar::-webkit-scrollbar-thumb:hover {
+.stack-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--color-border-medium);
 }
 
@@ -1047,12 +1064,13 @@ body {
 }
 
 /* [NOT-68] Add Button ("#" button) */
+/* [NOT-73] Increased size for better clickability */
 .stack-add-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);

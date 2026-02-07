@@ -603,6 +603,7 @@ function showPillWithAnimation(pillElement, state = 'exact') {
 
 /**
  * [NOT-68] Render Stack Context Bar - Unified context UI for Library and Chat
+ * [NOT-73] Restructured with pinned controls and scrollable tags
  * Displays active context as chips: "This Page", active tags, starred/read later, and suggestions
  * @param {string} containerId - The container element ID ('library-stack-context' or 'chat-stack-context')
  * @returns {void}
@@ -611,8 +612,14 @@ async function renderStackContextBar(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
+  // [NOT-73] Get pinned and scroll containers
+  const pinnedContainer = container.querySelector('.stack-pinned');
+  const scrollContainer = container.querySelector('.stack-scroll');
+  if (!pinnedContainer || !scrollContainer) return;
+
   // Clear existing content
-  container.innerHTML = '';
+  pinnedContainer.innerHTML = '';
+  scrollContainer.innerHTML = '';
 
   // Get current URL for "This Page" chip
   let currentUrl = null;
@@ -625,7 +632,15 @@ async function renderStackContextBar(containerId) {
     warn('[NOT-68] Could not get current URL:', error);
   }
 
-  // 1. Render "This Page" chip (always show, toggleable)
+  // [NOT-73] 1. Render "#" Add button (PINNED - first element)
+  const addButton = document.createElement('button');
+  addButton.className = 'stack-add-button';
+  addButton.textContent = '#';
+  addButton.setAttribute('title', 'Add filter');
+  addButton.setAttribute('data-action', 'add-filter');
+  pinnedContainer.appendChild(addButton);
+
+  // [NOT-73] 2. Render "This Page" chip (PINNED - second element)
   if (currentUrl) {
     const pageChip = document.createElement('button');
     pageChip.className = 'stack-chip stack-chip-page';
@@ -656,10 +671,10 @@ async function renderStackContextBar(containerId) {
 
     pageChip.appendChild(icon);
     pageChip.appendChild(text);
-    container.appendChild(pageChip);
+    pinnedContainer.appendChild(pageChip);
   }
 
-  // 2. Render active Tag chips (clickable to toggle off)
+  // [NOT-73] 3. Render active Tag chips (SCROLLABLE)
   // [NOT-69] Removed × icon - clicking chip body toggles it off
   if (filterState.tags && filterState.tags.length > 0) {
     filterState.tags.forEach(tag => {
@@ -673,11 +688,11 @@ async function renderStackContextBar(containerId) {
       text.textContent = tag;
 
       tagChip.appendChild(text);
-      container.appendChild(tagChip);
+      scrollContainer.appendChild(tagChip);
     });
   }
 
-  // 3. Render Starred chip if active
+  // [NOT-73] 4. Render Starred chip if active (SCROLLABLE)
   // [NOT-69] Removed × icon - clicking chip body toggles it off
   if (filterState.starred) {
     const starredChip = document.createElement('button');
@@ -696,10 +711,10 @@ async function renderStackContextBar(containerId) {
 
     starredChip.appendChild(icon);
     starredChip.appendChild(text);
-    container.appendChild(starredChip);
+    scrollContainer.appendChild(starredChip);
   }
 
-  // 4. Render Read Later chip if active
+  // [NOT-73] 5. Render Read Later chip if active (SCROLLABLE)
   // [NOT-69] Removed × icon - clicking chip body toggles it off
   if (filterState.readLater) {
     const readLaterChip = document.createElement('button');
@@ -718,18 +733,10 @@ async function renderStackContextBar(containerId) {
 
     readLaterChip.appendChild(icon);
     readLaterChip.appendChild(text);
-    container.appendChild(readLaterChip);
+    scrollContainer.appendChild(readLaterChip);
   }
 
-  // 5. Render "#" Add button
-  const addButton = document.createElement('button');
-  addButton.className = 'stack-add-button';
-  addButton.textContent = '#';
-  addButton.setAttribute('title', 'Add filter');
-  addButton.setAttribute('data-action', 'add-filter');
-  container.appendChild(addButton);
-
-  // 6. Render Ghost chips (Context-aware suggested tags)
+  // [NOT-73] 6. Render Ghost chips (SCROLLABLE - Context-aware suggested tags)
   // [NOT-69] Use context-aware tags that prioritize tags from current page
   const suggestedTags = await getContextAwareTags(currentUrl);
 
@@ -740,7 +747,7 @@ async function renderStackContextBar(containerId) {
     ghostChip.setAttribute('data-value', tag);
     ghostChip.textContent = tag;
     ghostChip.setAttribute('title', `Filter by ${tag}`);
-    container.appendChild(ghostChip);
+    scrollContainer.appendChild(ghostChip);
   });
 }
 
