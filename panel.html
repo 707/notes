@@ -329,16 +329,6 @@
             </div>
           </div>
 
-          <!-- Active Filters Display -->
-          <div id="active-filters" class="active-filters hidden">
-            <span class="active-filters-label">Active:</span>
-            <div id="active-filters-chips" class="active-filters-chips">
-              <!-- Filter chips populated dynamically -->
-            </div>
-            <button id="clear-all-filters" class="clear-all-button" title="Clear all filters">
-              Clear All
-            </button>
-          </div>
         </div>
       </div>
 
@@ -561,6 +551,27 @@
       </div>
     </div>
   </template>
+
+  <!-- [NOT-69] Stack Menu - Popover for filters -->
+  <div id="stack-menu" class="stack-menu hidden">
+    <div class="stack-menu-header">
+      <input type="text" id="stack-menu-search" class="stack-menu-search" placeholder="Filter tags..." aria-label="Filter tags">
+    </div>
+    <div class="stack-menu-section">
+      <button class="stack-menu-item" data-type="starred" aria-label="Filter by starred notes">
+        <svg class="icon icon-sm"><use href="#icon-star"></use></svg>
+        <span>Starred</span>
+      </button>
+      <button class="stack-menu-item" data-type="readLater" aria-label="Filter by read later notes">
+        <svg class="icon icon-sm"><use href="#icon-clock"></use></svg>
+        <span>Read Later</span>
+      </button>
+    </div>
+    <div class="stack-menu-divider"></div>
+    <div class="stack-menu-tags" id="stack-menu-tags-list">
+      <!-- Tags populated dynamically -->
+    </div>
+  </div>
 
   <!-- [NOT-29] [NOT-33] Image Lightbox Modal with Navigation -->
   <div id="lightbox-modal" class="lightbox-modal hidden">

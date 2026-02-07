@@ -647,41 +647,43 @@ async function renderStackContextBar(containerId) {
     use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#icon-file-text');
     icon.appendChild(use);
 
+    // [NOT-69] Calculate note count for this URL
+    const notesOnPage = getNotesForUrl(currentUrl);
+    const noteCount = notesOnPage.length;
+
     const text = document.createElement('span');
-    text.textContent = 'This Page';
+    text.textContent = noteCount > 0 ? `This Page (+${noteCount})` : 'This Page';
 
     pageChip.appendChild(icon);
     pageChip.appendChild(text);
     container.appendChild(pageChip);
   }
 
-  // 2. Render active Tag chips (removable)
+  // 2. Render active Tag chips (clickable to toggle off)
+  // [NOT-69] Removed × icon - clicking chip body toggles it off
   if (filterState.tags && filterState.tags.length > 0) {
     filterState.tags.forEach(tag => {
-      const tagChip = document.createElement('div');
+      const tagChip = document.createElement('button');
       tagChip.className = 'stack-chip stack-chip-tag';
       tagChip.setAttribute('data-type', 'tag');
       tagChip.setAttribute('data-value', tag);
+      tagChip.setAttribute('title', `Remove ${tag} filter`);
 
       const text = document.createElement('span');
       text.textContent = tag;
 
-      const remove = document.createElement('span');
-      remove.className = 'remove';
-      remove.textContent = '×';
-      remove.setAttribute('title', `Remove ${tag}`);
-
       tagChip.appendChild(text);
-      tagChip.appendChild(remove);
       container.appendChild(tagChip);
     });
   }
 
   // 3. Render Starred chip if active
+  // [NOT-69] Removed × icon - clicking chip body toggles it off
   if (filterState.starred) {
-    const starredChip = document.createElement('div');
+    const starredChip = document.createElement('button');
     starredChip.className = 'stack-chip stack-chip-tag';
     starredChip.setAttribute('data-type', 'starred');
+    starredChip.setAttribute('title', 'Remove starred filter');
 
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     icon.setAttribute('class', 'icon icon-sm');
@@ -692,22 +694,18 @@ async function renderStackContextBar(containerId) {
     const text = document.createElement('span');
     text.textContent = 'Starred';
 
-    const remove = document.createElement('span');
-    remove.className = 'remove';
-    remove.textContent = '×';
-    remove.setAttribute('title', 'Remove starred filter');
-
     starredChip.appendChild(icon);
     starredChip.appendChild(text);
-    starredChip.appendChild(remove);
     container.appendChild(starredChip);
   }
 
   // 4. Render Read Later chip if active
+  // [NOT-69] Removed × icon - clicking chip body toggles it off
   if (filterState.readLater) {
-    const readLaterChip = document.createElement('div');
+    const readLaterChip = document.createElement('button');
     readLaterChip.className = 'stack-chip stack-chip-tag';
     readLaterChip.setAttribute('data-type', 'readLater');
+    readLaterChip.setAttribute('title', 'Remove read later filter');
 
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     icon.setAttribute('class', 'icon icon-sm');
@@ -718,14 +716,8 @@ async function renderStackContextBar(containerId) {
     const text = document.createElement('span');
     text.textContent = 'Read Later';
 
-    const remove = document.createElement('span');
-    remove.className = 'remove';
-    remove.textContent = '×';
-    remove.setAttribute('title', 'Remove read later filter');
-
     readLaterChip.appendChild(icon);
     readLaterChip.appendChild(text);
-    readLaterChip.appendChild(remove);
     container.appendChild(readLaterChip);
   }
 
@@ -737,12 +729,9 @@ async function renderStackContextBar(containerId) {
   addButton.setAttribute('data-action', 'add-filter');
   container.appendChild(addButton);
 
-  // 6. Render Ghost chips (Top 3 suggested tags not currently active)
-  const allTags = await getAllTags();
-  const activeTags = new Set(filterState.tags || []);
-  const suggestedTags = allTags
-    .filter(tag => !activeTags.has(tag))
-    .slice(0, 3);
+  // 6. Render Ghost chips (Context-aware suggested tags)
+  // [NOT-69] Use context-aware tags that prioritize tags from current page
+  const suggestedTags = await getContextAwareTags(currentUrl);
 
   suggestedTags.forEach(tag => {
     const ghostChip = document.createElement('button');
@@ -766,6 +755,62 @@ async function updateContextBars() {
 }
 
 /**
+ * [NOT-69] Get notes filtered by URL
+ * @param {string} url - The URL to filter by
+ * @returns {Array} Array of notes matching the URL
+ */
+function getNotesForUrl(url) {
+  if (!url) return [];
+  return allNotes.filter(note => note.url === url);
+}
+
+/**
+ * [NOT-69] Get context-aware tags for ghost chips
+ * Prioritizes tags from notes on the current page, fills remaining slots with global popular tags
+ * @param {string} url - The current page URL
+ * @returns {Promise<string[]>} Array of suggested tags (max 3)
+ */
+async function getContextAwareTags(url) {
+  const activeTags = new Set(filterState.tags || []);
+  const contextTags = [];
+
+  // Priority 1: Tags from notes on this page
+  if (url) {
+    const notesOnPage = getNotesForUrl(url);
+    const tagCounts = {};
+
+    notesOnPage.forEach(note => {
+      if (note.tags && Array.isArray(note.tags)) {
+        note.tags.forEach(tag => {
+          if (!activeTags.has(tag)) {
+            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    // Sort by frequency and add to contextTags
+    const sortedContextTags = Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag]) => tag);
+
+    contextTags.push(...sortedContextTags);
+  }
+
+  // Priority 2: If we have fewer than 3 tags, fill with global popular tags
+  if (contextTags.length < 3) {
+    const allTags = await getAllTags();
+    const globalTags = allTags
+      .filter(tag => !activeTags.has(tag) && !contextTags.includes(tag))
+      .slice(0, 3 - contextTags.length);
+
+    contextTags.push(...globalTags);
+  }
+
+  return contextTags.slice(0, 3);
+}
+
+/**
  * [NOT-68] Get all unique tags from notes (sorted by usage frequency)
  * @returns {Promise<string[]>} Array of tags sorted by frequency
  */
@@ -783,6 +828,93 @@ async function getAllTags() {
   return Object.entries(tagCounts)
     .sort((a, b) => b[1] - a[1])
     .map(([tag]) => tag);
+}
+
+/**
+ * [NOT-69] Toggle the Stack Menu popover
+ * Opens or closes the menu anchored to the Stack Context Bar
+ * @returns {void}
+ */
+function toggleStackMenu() {
+  const menu = document.getElementById('stack-menu');
+  if (!menu) return;
+
+  if (menu.classList.contains('hidden')) {
+    // Open menu
+    renderStackMenu();
+    menu.classList.remove('hidden');
+
+    // Focus search input
+    const searchInput = document.getElementById('stack-menu-search');
+    if (searchInput) {
+      setTimeout(() => searchInput.focus(), 100);
+    }
+
+    // Close menu when clicking outside
+    const closeHandler = (e) => {
+      if (!menu.contains(e.target) && !e.target.closest('.stack-add-button')) {
+        menu.classList.add('hidden');
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
+  } else {
+    // Close menu
+    menu.classList.add('hidden');
+  }
+}
+
+/**
+ * [NOT-69] Render the Stack Menu content
+ * Populates system filters (Starred, Read Later) and tag list
+ * @returns {Promise<void>}
+ */
+async function renderStackMenu() {
+  const tagsList = document.getElementById('stack-menu-tags-list');
+  if (!tagsList) return;
+
+  // Clear existing tags
+  tagsList.innerHTML = '';
+
+  // Get all tags
+  const allTags = await getAllTags();
+  const activeTags = new Set(filterState.tags || []);
+
+  // Render each tag
+  allTags.forEach(tag => {
+    const tagItem = document.createElement('button');
+    tagItem.className = 'stack-menu-item';
+    tagItem.setAttribute('data-type', 'tag');
+    tagItem.setAttribute('data-value', tag);
+
+    if (activeTags.has(tag)) {
+      tagItem.classList.add('active');
+    }
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('class', 'icon icon-sm');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#icon-tag');
+    icon.appendChild(use);
+
+    const text = document.createElement('span');
+    text.textContent = tag;
+
+    tagItem.appendChild(icon);
+    tagItem.appendChild(text);
+    tagsList.appendChild(tagItem);
+  });
+
+  // Update system filter states
+  const starredItem = document.querySelector('.stack-menu-item[data-type="starred"]');
+  const readLaterItem = document.querySelector('.stack-menu-item[data-type="readLater"]');
+
+  if (starredItem) {
+    starredItem.classList.toggle('active', filterState.starred === true);
+  }
+  if (readLaterItem) {
+    readLaterItem.classList.toggle('active', filterState.readLater === true);
+  }
 }
 
 /**
@@ -910,7 +1042,7 @@ function clearStackContext() {
   // Save and re-render
   saveFilterState();
   renderNotesList();
-  renderActiveFilters();
+  // [NOT-69] renderActiveFilters() removed
   updateContextBars();
 }
 
@@ -2618,6 +2750,8 @@ async function renderLibraryMode() {
   // [NOT-16] Setup event listeners only once to prevent duplicates
   if (!libraryListenersInitialized) {
     setupLibraryEventListeners();
+    // [NOT-69] Setup Stack Menu event listeners
+    setupStackMenuEventListeners();
     libraryListenersInitialized = true;
   }
 
@@ -2630,8 +2764,7 @@ async function renderLibraryMode() {
   // [NOT-66] Apply filters and sort (including default sort) before rendering
   filterAndRenderNotes();
 
-  // Render active filters
-  renderActiveFilters();
+  // [NOT-69] Render active filters removed - Stack Context Bar is now the only indicator
 
   // [NOT-68] Update Stack Context Bars based on active context
   updateContextBars();
@@ -2687,13 +2820,9 @@ function setupLibraryEventListeners() {
         return;
       }
 
-      // Handle Add button (show filter dropdown)
+      // [NOT-69] Handle Add button (show Stack Menu)
       if (target.classList.contains('stack-add-button')) {
-        const filterInput = document.getElementById('filter-input');
-        if (filterInput) {
-          filterInput.focus();
-          filterInput.click(); // Trigger dropdown
-        }
+        toggleStackMenu();
         return;
       }
     });
@@ -2811,7 +2940,7 @@ function setupLibraryEventListeners() {
     }
 
     filterAndRenderNotes();
-    renderActiveFilters();
+    // [NOT-69] renderActiveFilters() removed
     updateFilterDropdownActiveStates();
     saveFilterState();
   });
@@ -2866,7 +2995,7 @@ function setupLibraryEventListeners() {
     }
 
     filterAndRenderNotes();
-    renderActiveFilters();
+    // [NOT-69] renderActiveFilters() removed
     updateFilterDropdownActiveStates();
     saveFilterState();
   });
@@ -2885,7 +3014,7 @@ function setupLibraryEventListeners() {
 
       // Re-render
       filterAndRenderNotes();
-      renderActiveFilters();
+      // [NOT-69] renderActiveFilters() removed
       updateContextBars();
       saveFilterState();
 
@@ -2927,6 +3056,103 @@ function setupLibraryEventListeners() {
       }
     }
   });
+}
+
+/**
+ * [NOT-69] Setup event listeners for Stack Menu
+ * Handles clicks on menu items and tag search
+ * @returns {void}
+ */
+function setupStackMenuEventListeners() {
+  const stackMenu = document.getElementById('stack-menu');
+  if (!stackMenu) return;
+
+  // Handle menu item clicks
+  stackMenu.addEventListener('click', async (e) => {
+    const menuItem = e.target.closest('.stack-menu-item');
+    if (!menuItem) return;
+
+    const type = menuItem.getAttribute('data-type');
+    const value = menuItem.getAttribute('data-value');
+
+    if (type === 'starred') {
+      // Toggle starred filter
+      filterState.starred = !filterState.starred;
+      filterAndRenderNotes();
+      await renderStackMenu(); // Update menu state
+      updateContextBars();
+      saveFilterState();
+    } else if (type === 'readLater') {
+      // Toggle read later filter
+      filterState.readLater = !filterState.readLater;
+      filterAndRenderNotes();
+      await renderStackMenu(); // Update menu state
+      updateContextBars();
+      saveFilterState();
+    } else if (type === 'tag' && value) {
+      // Toggle tag filter
+      if (filterState.tags.includes(value)) {
+        filterState.tags = filterState.tags.filter(t => t !== value);
+      } else {
+        filterState.tags.push(value);
+      }
+      filterAndRenderNotes();
+      await renderStackMenu(); // Update menu state
+      updateContextBars();
+      saveFilterState();
+    }
+  });
+
+  // Handle tag search
+  const searchInput = document.getElementById('stack-menu-search');
+  if (searchInput) {
+    // Remove old listener if exists
+    const oldHandler = searchInput._stackMenuSearchHandler;
+    if (oldHandler) {
+      searchInput.removeEventListener('input', oldHandler);
+    }
+
+    // Create new handler
+    const searchHandler = async (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      const tagsList = document.getElementById('stack-menu-tags-list');
+      if (!tagsList) return;
+
+      // Get all tags and filter
+      const allTags = await getAllTags();
+      const activeTags = new Set(filterState.tags || []);
+      const filteredTags = query ? allTags.filter(tag => tag.toLowerCase().includes(query)) : allTags;
+
+      // Re-render filtered tags
+      tagsList.innerHTML = '';
+      filteredTags.forEach(tag => {
+        const tagItem = document.createElement('button');
+        tagItem.className = 'stack-menu-item';
+        tagItem.setAttribute('data-type', 'tag');
+        tagItem.setAttribute('data-value', tag);
+
+        if (activeTags.has(tag)) {
+          tagItem.classList.add('active');
+        }
+
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('class', 'icon icon-sm');
+        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#icon-tag');
+        icon.appendChild(use);
+
+        const text = document.createElement('span');
+        text.textContent = tag;
+
+        tagItem.appendChild(icon);
+        tagItem.appendChild(text);
+        tagsList.appendChild(tagItem);
+      });
+    };
+
+    searchInput._stackMenuSearchHandler = searchHandler;
+    searchInput.addEventListener('input', searchHandler);
+  }
 }
 
 function populateFilterDropdown() {
@@ -3078,48 +3304,7 @@ function filterAndRenderNotes() {
   renderNotesList();
 }
 
-function renderActiveFilters() {
-  const activeFiltersEl = document.getElementById('active-filters');
-  const chipsContainer = document.getElementById('active-filters-chips');
-  chipsContainer.innerHTML = '';
-
-  let hasActiveFilters = false;
-
-  // Add sort chip (only if not default)
-  if (filterState.sort !== 'newest') {
-    hasActiveFilters = true;
-    const chip = createFilterChip('sort', filterState.sort, filterState.sort === 'newest' ? '↓ Newest' : '↑ Oldest');
-    chipsContainer.appendChild(chip);
-  }
-
-  // [NOT-18] Add Read Later chip
-  if (filterState.readLater) {
-    hasActiveFilters = true;
-    const chip = createFilterChip('readLater', 'true', '🕐 Read Later');
-    chipsContainer.appendChild(chip);
-  }
-
-  // [NOT-35] Add Starred chip
-  if (filterState.starred) {
-    hasActiveFilters = true;
-    const chip = createFilterChip('starred', 'true', '⭐ Starred');
-    chipsContainer.appendChild(chip);
-  }
-
-  // Add tag chips
-  filterState.tags.forEach(tag => {
-    hasActiveFilters = true;
-    const chip = createFilterChip('tag', tag, tag);
-    chipsContainer.appendChild(chip);
-  });
-
-  // Show/hide active filters section
-  if (hasActiveFilters) {
-    activeFiltersEl.classList.remove('hidden');
-  } else {
-    activeFiltersEl.classList.add('hidden');
-  }
-}
+// [NOT-69] renderActiveFilters() removed - Stack Context Bar is now the only indicator
 
 function updatePlaceholder() {
   const filterInput = document.getElementById('filter-input');
@@ -3169,7 +3354,7 @@ function createFilterChip(type, value, label) {
         filterState.starred = false;
       }
       filterAndRenderNotes();
-      renderActiveFilters();
+      // [NOT-69] renderActiveFilters() removed
       saveFilterState();
     }, 200);
   });
@@ -4979,17 +5164,13 @@ async function renderAIChatMode() {
         return;
       }
 
-      // Handle Add button (show filter dropdown)
+      // [NOT-69] Handle Add button (show Stack Menu)
       if (target.classList.contains('stack-add-button')) {
-        const filterInput = document.getElementById('filter-input');
-        if (filterInput) {
-          // Navigate to library to access filter UI
+        // Navigate to library first if not already there
+        if (currentMode !== 'library') {
           await renderLibraryMode();
-          setTimeout(() => {
-            filterInput.focus();
-            filterInput.click();
-          }, 100);
         }
+        toggleStackMenu();
         return;
       }
     };
@@ -5571,9 +5752,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // [NOT-31] Listen for tab changes to refresh contextual recall pill
+  // [NOT-69] Also update Stack Context Bars to refresh counts and ghost chips
   chrome.tabs.onActivated.addListener(async () => {
     if (currentMode === 'library') {
       await checkContextualRecall();
+      await updateContextBars();
     }
   });
 
@@ -5582,6 +5765,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (activeTab && activeTab.id === tabId) {
         await checkContextualRecall();
+        await updateContextBars();
       }
     }
   });
