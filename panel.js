@@ -617,7 +617,15 @@ async function renderStackContextBar(containerId) {
   const scrollContainer = container.querySelector('.stack-scroll');
   if (!pinnedContainer || !scrollContainer) return;
 
-  // Clear existing content
+  // [NOT-73] Clear existing content (including any old direct children)
+  // Remove all direct children that aren't the pinned/scroll containers
+  Array.from(container.children).forEach(child => {
+    if (child !== pinnedContainer && child !== scrollContainer) {
+      child.remove();
+    }
+  });
+
+  // Clear the child containers
   pinnedContainer.innerHTML = '';
   scrollContainer.innerHTML = '';
 
