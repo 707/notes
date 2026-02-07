@@ -560,9 +560,10 @@ body {
 }
 
 /* [NOT-34] Fixed filter bar at top (flex layout keeps it in place) */
+/* [NOT-66] Reduced padding to allow full-width inputs */
 .library-header {
   flex-shrink: 0;
-  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
+  padding: var(--spacing-sm);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
@@ -708,8 +709,9 @@ body {
   letter-spacing: 0.5px;
 }
 
+/* [NOT-66] Reduced padding for more compact dropdown items */
 .filter-option {
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -973,11 +975,12 @@ body {
 }
 
 /* [NOT-60] Assistant Input Area */
+/* [NOT-66] Reduced padding to maximize width */
 .assistant-input-area {
   display: flex;
   align-items: flex-end;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm);
 }
 
 .assistant-input {
