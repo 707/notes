@@ -2419,17 +2419,14 @@ async function renderLibraryMode() {
   // [NOT-31] Check for contextual recall (existing notes for current page)
   await checkContextualRecall();
 
-  // Render notes
-  renderNotesList();
-
   // Populate filter dropdown
   populateFilterDropdown();
 
+  // [NOT-66] Apply filters and sort (including default sort) before rendering
+  filterAndRenderNotes();
+
   // Render active filters
   renderActiveFilters();
-
-  // Update placeholder based on current filter state
-  updatePlaceholder();
 
   // [NOT-60] Update Stack Chip based on active context
   updateStackChip();
