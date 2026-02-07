@@ -2750,8 +2750,6 @@ async function renderLibraryMode() {
   // [NOT-16] Setup event listeners only once to prevent duplicates
   if (!libraryListenersInitialized) {
     setupLibraryEventListeners();
-    // [NOT-69] Setup Stack Menu event listeners
-    setupStackMenuEventListeners();
     libraryListenersInitialized = true;
   }
 
@@ -5134,10 +5132,7 @@ async function renderAIChatMode() {
 
       // [NOT-69] Handle Add button (show Stack Menu)
       if (target.classList.contains('stack-add-button')) {
-        // Navigate to library first if not already there
-        if (currentMode !== 'library') {
-          await renderLibraryMode();
-        }
+        // Open menu in current mode (no forced navigation)
         toggleStackMenu();
         return;
       }
@@ -5718,6 +5713,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (settingsButton) {
     settingsButton.addEventListener('click', renderSettingsMode);
   }
+
+  // [NOT-69] Setup Stack Menu event listeners globally (works in all modes)
+  setupStackMenuEventListeners();
 
   // [NOT-31] Listen for tab changes to refresh contextual recall pill
   // [NOT-69] Also update Stack Context Bars to refresh counts and ghost chips
