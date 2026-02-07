@@ -560,10 +560,10 @@ body {
 }
 
 /* [NOT-34] Fixed filter bar at top (flex layout keeps it in place) */
-/* [NOT-66] Reduced padding to allow full-width inputs */
+/* [NOT-66] Remove horizontal padding for edge-to-edge inputs */
 .library-header {
   flex-shrink: 0;
-  padding: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
@@ -975,12 +975,12 @@ body {
 }
 
 /* [NOT-60] Assistant Input Area */
-/* [NOT-66] Reduced padding to maximize width */
+/* [NOT-66] Remove horizontal padding for edge-to-edge layout */
 .assistant-input-area {
   display: flex;
   align-items: flex-end;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
 }
 
 .assistant-input {
