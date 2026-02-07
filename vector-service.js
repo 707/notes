@@ -222,6 +222,7 @@ class VectorService {
           'metadata.language': 'string', // Programming language (GitHub)
           'metadata.duration': 'string', // Video duration (YouTube)
           'metadata.channel': 'string', // YouTube channel
+          'metadata.views': 'string', // YouTube views (stored as string "1.2M" or raw number string)
           'metadata.author': 'string', // Author/creator
         };
 
@@ -485,6 +486,7 @@ class VectorService {
         'metadata.language': 'string',
         'metadata.duration': 'string',
         'metadata.channel': 'string',
+        'metadata.views': 'string',
         'metadata.author': 'string',
       };
       this.oramaDb = await this.oramaCreate({ schema });

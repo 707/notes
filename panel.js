@@ -148,19 +148,18 @@ function sanitizeHtml(htmlString) {
         // For links, only allow href and force target="_blank" for safety
         const href = node.getAttribute('href');
         if (href) {
-          // [NOT-20] Validate href using URL constructor to prevent XSS bypasses
-          try {
-            const url = new URL(href.trim(), window.location.origin);
-            const protocol = url.protocol.toLowerCase();
-
-            // Only allow http, https, and relative URLs
-            if (protocol === 'http:' || protocol === 'https:') {
-              cleanElement.setAttribute('href', href.trim());
-              cleanElement.setAttribute('target', '_blank');
-              cleanElement.setAttribute('rel', 'noopener noreferrer');
-            }
-          } catch (e) {
-            // Invalid URL or dangerous protocol - skip this link but preserve text
+                      // [NOT-20] Validate href using URL constructor to prevent XSS bypasses
+                    try {
+                      const url = new URL(href.trim(), window.location.origin);
+                      const protocol = url.protocol.toLowerCase();
+          
+                      // Allow http, https, relative URLs, and internal extension protocols
+                      if (protocol === 'http:' || protocol === 'https:' || protocol === 'chrome-extension:' || protocol === 'data:') {
+                        cleanElement.setAttribute('href', href.trim());
+                        cleanElement.setAttribute('target', '_blank');
+                        cleanElement.setAttribute('rel', 'noopener noreferrer');
+                      }
+                    } catch (e) {            // Invalid URL or dangerous protocol - skip this link but preserve text
             // Link element will be created but without href, so it will be stripped
             // and text preserved by the fragment logic
           }
@@ -3105,20 +3104,28 @@ function createNoteCard(note, index = 0) {
 
   // [NOT-21] Validate URL protocol to prevent javascript: XSS attacks
   try {
-    const url = new URL(note.url.trim(), window.location.origin);
-    const protocol = url.protocol.toLowerCase();
-
-    if (protocol === 'http:' || protocol === 'https:') {
-      noteSourceLink.href = note.url.trim();
-    } else {
-      warn('⚠️  Blocked dangerous protocol:', protocol, 'for URL:', note.url);
-      // Set to empty to prevent navigation
+    const noteUrl = note.url ? note.url.trim() : '';
+    
+    if (!noteUrl) {
+      // Manual notes or notes without URL
       noteSourceLink.href = '#';
-      noteSourceLink.style.cursor = 'not-allowed';
+      noteSourceLink.style.cursor = 'default';
+      noteSourceLink.title = 'No source URL available';
+    } else {
+      const url = new URL(noteUrl, window.location.origin);
+      const protocol = url.protocol.toLowerCase();
+
+      // Allow http, https, and internal extension protocols
+      if (protocol === 'http:' || protocol === 'https:' || protocol === 'chrome-extension:' || protocol === 'data:') {
+        noteSourceLink.href = noteUrl;
+      } else {
+        warn('⚠️  Blocked dangerous protocol:', protocol, 'for URL:', noteUrl);
+        noteSourceLink.href = '#';
+        noteSourceLink.style.cursor = 'not-allowed';
+      }
     }
   } catch (e) {
     warn('⚠️  Invalid URL:', note.url);
-    // Set to empty to prevent navigation
     noteSourceLink.href = '#';
     noteSourceLink.style.cursor = 'not-allowed';
   }
@@ -3200,15 +3207,23 @@ function createNoteCard(note, index = 0) {
   // [NOT-26] Validate URL protocol before setting href (prevent XSS)
   const noteLinkEl = card.querySelector('.note-link');
   try {
-    const url = new URL(note.url.trim(), window.location.origin);
-    const protocol = url.protocol.toLowerCase();
-
-    if (protocol === 'http:' || protocol === 'https:') {
-      noteLinkEl.href = note.url.trim();
-    } else {
-      warn('⚠️  Blocked dangerous protocol in expanded view:', protocol, 'for URL:', note.url);
+    const noteUrl = note.url ? note.url.trim() : '';
+    
+    if (!noteUrl) {
       noteLinkEl.href = '#';
-      noteLinkEl.style.cursor = 'not-allowed';
+      noteLinkEl.style.cursor = 'default';
+      noteLinkEl.classList.add('hidden'); // Hide "View Source" if no URL
+    } else {
+      const url = new URL(noteUrl, window.location.origin);
+      const protocol = url.protocol.toLowerCase();
+
+      if (protocol === 'http:' || protocol === 'https:' || protocol === 'chrome-extension:' || protocol === 'data:') {
+        noteLinkEl.href = noteUrl;
+      } else {
+        warn('⚠️  Blocked dangerous protocol in expanded view:', protocol, 'for URL:', noteUrl);
+        noteLinkEl.href = '#';
+        noteLinkEl.style.cursor = 'not-allowed';
+      }
     }
   } catch (e) {
     warn('⚠️  Invalid URL in expanded view:', note.url);
