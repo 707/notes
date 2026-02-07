@@ -3018,7 +3018,7 @@ function setupLibraryEventListeners() {
         }
 
         filterAndRenderNotes();
-        renderActiveFilters();
+        // [NOT-69] renderActiveFilters() removed
         updateFilterDropdownActiveStates();
         saveFilterState();
       }
@@ -3565,7 +3565,7 @@ function createNoteCard(note, index = 0) {
         }
 
         filterAndRenderNotes();
-        renderActiveFilters();
+        // [NOT-69] renderActiveFilters() removed
         updateFilterDropdownActiveStates();
         saveFilterState();
       });
