@@ -2116,13 +2116,12 @@ body {
   transform: scale(0.95);
 }
 
-/* [NOT-84] Tag Popover - Compact size to match button */
+/* [NOT-84] Tag Popover - Compact and lean width */
 .tag-popover {
   position: absolute;
   top: calc(100% + var(--spacing-sm));
   left: 0;
-  width: 100%;
-  min-width: 240px;
+  width: 200px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -2131,7 +2130,7 @@ body {
   animation: enter-slide var(--duration-base) var(--ease-out-spring);
 }
 
-/* [NOT-84] Popover search input - Smaller to match compact design */
+/* [NOT-84] Popover search input - No focus ring, subtle background change */
 .tag-popover-search {
   width: 100%;
   padding: var(--spacing-sm) var(--spacing-md);
@@ -2143,6 +2142,7 @@ body {
   color: var(--color-text-primary);
   outline: none;
   background: var(--color-surface);
+  box-shadow: none;
 }
 
 .tag-popover-search::placeholder {
@@ -2151,6 +2151,8 @@ body {
 
 .tag-popover-search:focus {
   background: var(--color-surface-secondary);
+  outline: none;
+  box-shadow: none;
 }
 
 /* [NOT-84] Popover tag list - Reduced height */
