@@ -972,16 +972,17 @@ async function renderStackMenu() {
 }
 
 /**
- * [NOT-68] Get filtered notes based on Stack context (excluding search filter)
+ * [NOT-68] [NOT-78] Get filtered notes based on Stack context (excluding search filter)
  * Shared helper to avoid logic duplication between Library and Chat
+ * Fallback: If "This Page" filter is active but has 0 notes, shows all notes instead of empty state
  * @returns {Array} Filtered notes array
  */
 function getStackFilteredNotes() {
   let filtered = [...allNotes];
 
-  // Apply context filter (page URL filter)
+  // [NOT-78] Apply context filter (page URL filter) with fallback logic
   if (filterState.contextFilter) {
-    filtered = filtered.filter(note => {
+    const notesOnPage = allNotes.filter(note => {
       if (!note.url) return false;
 
       // Exact URL match (if filter contains protocol)
@@ -997,6 +998,14 @@ function getStackFilteredNotes() {
         return false;
       }
     });
+
+    // [NOT-78] Fallback: If no notes on this page, show all notes instead of empty state
+    if (notesOnPage.length === 0) {
+      log('[NOT-78] No notes on this page, falling back to show all notes');
+      filtered = [...allNotes]; // Use all notes as base set
+    } else {
+      filtered = notesOnPage; // Use page-specific notes as base set
+    }
   }
 
   // Apply tag filters (case-insensitive)
