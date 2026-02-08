@@ -89,6 +89,10 @@
       <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="9 18 15 12 9 6"></polyline>
       </symbol>
+      <!-- [NOT-83] Chevron Down Icon -->
+      <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </symbol>
       <!-- [NOT-33] Upload Icon -->
       <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -196,17 +200,22 @@
 
     <!-- Capture Mode -->
     <div id="capture-mode" class="capture-mode hidden">
-      <div class="source-bar">
-        <img id="capture-favicon" class="favicon" src="" alt="">
-        <div class="source-info">
-          <div id="capture-site-name" class="site-name"></div>
-          <div id="capture-url" class="url"></div>
+      <!-- [NOT-83] Consolidated Source Card - combines source bar and preview -->
+      <div class="source-card">
+        <!-- Header: Favicon + Title + URL -->
+        <div class="source-card-header">
+          <img id="capture-favicon" class="favicon" src="" alt="">
+          <div class="source-card-info">
+            <div id="capture-site-name" class="source-card-title"></div>
+            <div id="capture-url" class="source-card-url"></div>
+          </div>
         </div>
-      </div>
 
-      <div class="preview-section">
-        <label class="section-label">Selected Text</label>
-        <div id="capture-text-preview" class="text-preview"></div>
+        <!-- Body: Selected Text Preview -->
+        <div class="source-card-body">
+          <div class="source-card-label">Selected Text</div>
+          <div id="capture-text-preview" class="source-card-preview"></div>
+        </div>
       </div>
 
       <div class="input-section">
@@ -234,22 +243,31 @@
         </button>
       </div>
 
-      <!-- [NOT-33] Image Management Section -->
+      <!-- [NOT-33] [NOT-83] Image Management Section -->
       <div class="input-section">
         <label class="section-label">Images</label>
         <!-- [NOT-33] Hidden file input for uploads -->
         <input type="file" id="image-upload-input" accept="image/*" multiple class="hidden" aria-label="Upload images">
 
-        <!-- [NOT-33] Add Image Controls -->
-        <div class="add-image-controls">
-          <button id="upload-image-button" class="add-image-button" type="button" title="Upload images from device">
-            <svg class="icon icon-sm"><use href="#icon-upload"></use></svg>
-            <span>Upload</span>
-          </button>
-          <button id="capture-webpage-image-button" class="add-image-button" type="button" title="Capture image from webpage">
+        <!-- [NOT-83] Consolidated Add Image Menu -->
+        <div class="add-image-menu-wrapper">
+          <button id="add-image-menu-button" class="add-image-menu-button" type="button" title="Add images">
             <svg class="icon icon-sm"><use href="#icon-image"></use></svg>
-            <span>Capture from Webpage</span>
+            <span>Add Image</span>
+            <svg class="icon icon-xs chevron"><use href="#icon-chevron-down"></use></svg>
           </button>
+
+          <!-- Dropdown Menu -->
+          <div id="image-menu-dropdown" class="image-menu-dropdown hidden">
+            <button class="image-menu-item" data-action="upload" type="button">
+              <svg class="icon icon-sm"><use href="#icon-upload"></use></svg>
+              <span>Upload from Device</span>
+            </button>
+            <button class="image-menu-item" data-action="capture" type="button">
+              <svg class="icon icon-sm"><use href="#icon-image"></use></svg>
+              <span>Capture from Webpage</span>
+            </button>
+          </div>
         </div>
 
         <!-- [NOT-33] Image Preview List (thumbnails) -->

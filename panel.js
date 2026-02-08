@@ -5689,15 +5689,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     pulsePillButton.addEventListener('click', handlePulsePillClick);
   }
 
-  // [NOT-33] Image upload button handler
-  const uploadImageButton = document.getElementById('upload-image-button');
+  // [NOT-83] Image dropdown menu handler
+  const addImageMenuButton = document.getElementById('add-image-menu-button');
+  const imageMenuDropdown = document.getElementById('image-menu-dropdown');
   const imageUploadInput = document.getElementById('image-upload-input');
 
-  if (uploadImageButton && imageUploadInput) {
-    uploadImageButton.addEventListener('click', () => {
-      imageUploadInput.click();
+  if (addImageMenuButton && imageMenuDropdown) {
+    // Toggle dropdown on button click
+    addImageMenuButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = imageMenuDropdown.classList.contains('hidden');
+
+      if (isHidden) {
+        imageMenuDropdown.classList.remove('hidden');
+        addImageMenuButton.classList.add('active');
+      } else {
+        imageMenuDropdown.classList.add('hidden');
+        addImageMenuButton.classList.remove('active');
+      }
     });
 
+    // Handle menu item clicks
+    const menuItems = imageMenuDropdown.querySelectorAll('.image-menu-item');
+    menuItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = item.getAttribute('data-action');
+
+        // Close dropdown
+        imageMenuDropdown.classList.add('hidden');
+        addImageMenuButton.classList.remove('active');
+
+        // Execute action
+        if (action === 'upload') {
+          imageUploadInput.click();
+        } else if (action === 'capture') {
+          activateWebCaptureMode('add-image-menu-button');
+        }
+      });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!imageMenuDropdown.contains(e.target) && e.target !== addImageMenuButton) {
+        imageMenuDropdown.classList.add('hidden');
+        addImageMenuButton.classList.remove('active');
+      }
+    });
+  }
+
+  // [NOT-33] File input change handler
+  if (imageUploadInput) {
     imageUploadInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files.length > 0) {
         handleFileUpload(e.target.files, false);
@@ -5705,12 +5747,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.target.value = '';
       }
     });
-  }
-
-  // [NOT-33] [NOT-36] Webpage image capture button handler - wrap to pass buttonId
-  const captureWebpageImageButton = document.getElementById('capture-webpage-image-button');
-  if (captureWebpageImageButton) {
-    captureWebpageImageButton.addEventListener('click', () => activateWebCaptureMode('capture-webpage-image-button'));
   }
 
   // [NOT-34] Navigation button handlers
