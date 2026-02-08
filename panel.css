@@ -1622,6 +1622,10 @@ body {
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 /* [NOT-26] Date appears inline next to source name with separator */

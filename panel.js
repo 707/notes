@@ -2227,15 +2227,21 @@ async function renderCaptureMode(clipData = {}) {
   // [NOT-16] [NOT-27] [NOT-83] Hide or show source card based on content type
   const sourceCard = document.querySelector('.source-card');
   const sourceCardBody = document.querySelector('.source-card-body');
-  const previewLabel = sourceCardBody.querySelector('.source-card-label');
+  const previewLabel = sourceCardBody ? sourceCardBody.querySelector('.source-card-label') : null;
 
   if (clipData.url && clipData.metadata) {
     // Has URL and metadata - show source info
-    sourceCard.style.display = '';
+    if (sourceCard) {
+      sourceCard.style.display = '';
+    }
 
-    document.getElementById('capture-favicon').src = clipData.metadata.favicon;
-    document.getElementById('capture-site-name').textContent = clipData.metadata.siteName;
-    document.getElementById('capture-url').textContent = clipData.url;
+    const favicon = document.getElementById('capture-favicon');
+    const siteName = document.getElementById('capture-site-name');
+    const url = document.getElementById('capture-url');
+
+    if (favicon) favicon.src = clipData.metadata.favicon || '';
+    if (siteName) siteName.textContent = clipData.metadata.siteName || '';
+    if (url) url.textContent = clipData.url || '';
 
     // [NOT-58] [NOT-83] Render dynamic source bar based on flexible_metadata.type
     renderDynamicSourceBar(clipData, document.querySelector('.source-card-header'));
