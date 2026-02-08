@@ -1521,25 +1521,28 @@ body {
 }
 
 /* [NOT-91] Compact header with reduced spacing */
+/* [NOT-91] Align to flex-start for vertically stacked source */
 .note-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;  /* Changed from center to flex-start for stacked layout */
   justify-content: space-between;
   margin-bottom: var(--spacing-sm);
   gap: var(--spacing-sm);
 }
 
-/* [NOT-21] [NOT-26] Source container - horizontal layout with date inline */
+/* [NOT-21] [NOT-26] Source container - vertical layout with date below */
+/* [NOT-91] Changed to column to prevent horizontal crowding */
 .note-source {
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--spacing-xs);
   flex: 1;
   min-width: 0;
 }
 
 /* [NOT-21] Clickable source link (favicon + site name only) */
+/* [NOT-91] Constrained to prevent overflow */
 .note-source-link {
   display: inline-flex;
   align-items: center;
@@ -1549,7 +1552,8 @@ body {
   border-radius: var(--radius-sm);
   text-decoration: none;
   color: inherit;
-  width: fit-content;
+  max-width: 100%;  /* Don't overflow parent */
+  min-width: 0;     /* Allow truncation */
   transition: background var(--transition-fast);
 }
 
@@ -1574,6 +1578,7 @@ body {
 }
 
 /* [NOT-83] Shows page title (or domain name as fallback) */
+/* [NOT-91] Dynamic width - adapts to available space instead of fixed 300px */
 .note-site-name {
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -1581,27 +1586,29 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 300px; /* Increased to accommodate page titles */
+  max-width: 100%;  /* Constrain to parent container, not fixed width */
+  flex: 1;
+  min-width: 0;     /* Allow truncation */
 }
 
-/* [NOT-26] Date appears inline next to source name with separator */
+/* [NOT-91] Date appears below source name (no separator needed) */
 .note-date {
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
   white-space: nowrap;
 }
 
-.note-date::before {
-  content: '·';
-  margin: 0 6px;
-  color: var(--color-text-tertiary);
-}
+/* [NOT-91] Separator removed - date is now on its own line */
+/* .note-date::before removed */
 
 /* [NOT-18] [NOT-26] Note Actions Container with button position management */
+/* [NOT-91] Protected from squeezing - always maintain button space */
 .note-actions {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  flex-shrink: 0;  /* Never squeeze the buttons */
+  flex: 0 0 auto;  /* Fixed size, don't grow/shrink */
 }
 
 /* [NOT-26] When read-later is active, move it to far right (after delete) */
