@@ -1008,14 +1008,19 @@ function getStackFilteredNotes() {
     }
   }
 
-  // Apply tag filters (case-insensitive)
+  // Apply tag filters (case-insensitive, normalize # prefix)
   if (filterState.tags.length > 0) {
     filtered = filtered.filter(note =>
-      filterState.tags.some(filterTag =>
-        note.tags.some(noteTag =>
-          noteTag.toLowerCase() === filterTag.toLowerCase()
-        )
-      )
+      filterState.tags.some(filterTag => {
+        // Normalize filter tag (remove # if present)
+        const normalizedFilterTag = filterTag.startsWith('#') ? filterTag.substring(1) : filterTag;
+
+        return note.tags.some(noteTag => {
+          // Normalize note tag (remove # if present)
+          const normalizedNoteTag = noteTag.startsWith('#') ? noteTag.substring(1) : noteTag;
+          return normalizedNoteTag.toLowerCase() === normalizedFilterTag.toLowerCase();
+        });
+      })
     );
   }
 
