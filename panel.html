@@ -387,16 +387,16 @@
         <!-- [NOT-73] Restructured with pinned controls and scrollable tags (created dynamically) -->
         <div id="library-stack-context" class="stack-context-bar"></div>
 
-        <!-- [NOT-60] Assistant Input Area -->
-        <div class="assistant-input-area">
+        <!-- [NOT-60] [NOT-85] Assistant Input Area - Uses same classes as chat-input-area for consistency -->
+        <div class="chat-input-area">
           <textarea
             id="assistant-input"
-            class="assistant-input"
+            class="chat-input"
             placeholder="Ask about your notes..."
             rows="1"
             aria-label="Assistant message input"
           ></textarea>
-          <button id="send-assistant-button" class="send-assistant-button" title="Send message" aria-label="Send message" disabled>
+          <button id="send-assistant-button" class="send-chat-button" title="Send message" aria-label="Send message" disabled>
             <svg class="icon icon-sm"><use href="#icon-arrow-right"></use></svg>
           </button>
         </div>

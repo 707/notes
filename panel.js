@@ -3607,6 +3607,14 @@ function createNoteCard(note, index = 0) {
       tagEl.className = 'note-tag';
       tagEl.textContent = tag;
 
+      // [NOT-85] Highlight tag if it's in active filters
+      const isActiveFilter = filterState.tags.some(
+        filterTag => filterTag.toLowerCase() === tag.toLowerCase()
+      );
+      if (isActiveFilter) {
+        tagEl.classList.add('active');
+      }
+
       // [NOT-26] Add click listener to toggle tag filter (case-insensitive)
       tagEl.addEventListener('click', (e) => {
         e.stopPropagation(); // Prevent card expansion
