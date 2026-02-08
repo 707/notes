@@ -1140,6 +1140,8 @@ async function togglePageContext() {
     // Save and re-render
     await saveFilterState();
     filterAndRenderNotes();
+    // [NOT-92] Update context bars to reflect active state change
+    await updateContextBars();
   } catch (error) {
     error('[NOT-68] Error toggling page context:', error);
   }
