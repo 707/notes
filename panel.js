@@ -4791,6 +4791,73 @@ function openNoteDetailModal(note) {
     imagesSection.classList.add('hidden');
   }
 
+  // [NOT-91] Wire up action buttons in modal
+  const editButton = modal.querySelector('.note-detail-edit-button');
+  const starButton = modal.querySelector('.note-detail-star-button');
+  const readLaterButton = modal.querySelector('.note-detail-read-later-button');
+  const deleteButton = modal.querySelector('.note-detail-delete-button');
+
+  // Set initial button states
+  if (note.starred) {
+    starButton.classList.add('active');
+    starButton.setAttribute('title', 'Unstar note');
+    starButton.setAttribute('aria-label', 'Unstar note');
+  } else {
+    starButton.classList.remove('active');
+    starButton.setAttribute('title', 'Star note');
+    starButton.setAttribute('aria-label', 'Star note');
+  }
+
+  if (note.readLater) {
+    readLaterButton.classList.add('active');
+    readLaterButton.setAttribute('title', 'Remove from read later');
+    readLaterButton.setAttribute('aria-label', 'Remove from read later');
+  } else {
+    readLaterButton.classList.remove('active');
+    readLaterButton.setAttribute('title', 'Mark as read later');
+    readLaterButton.setAttribute('aria-label', 'Mark as read later');
+  }
+
+  // Action handlers
+  const handleEdit = () => {
+    closeNoteDetailModal();
+    // Find the card in the DOM and trigger edit mode
+    const card = document.querySelector(`.note-card[data-note-id="${note.id}"]`);
+    if (card) {
+      handleEnterEditMode(note.id, card);
+    }
+  };
+
+  const handleStar = async () => {
+    await handleToggleStar(note.id, starButton);
+    // Update button state after toggle
+    if (starButton.classList.contains('active')) {
+      starButton.setAttribute('title', 'Unstar note');
+      starButton.setAttribute('aria-label', 'Unstar note');
+    } else {
+      starButton.setAttribute('title', 'Star note');
+      starButton.setAttribute('aria-label', 'Star note');
+    }
+  };
+
+  const handleReadLater = async () => {
+    await handleToggleReadLater(note.id, readLaterButton);
+    // Update button state after toggle
+    if (readLaterButton.classList.contains('active')) {
+      readLaterButton.setAttribute('title', 'Remove from read later');
+      readLaterButton.setAttribute('aria-label', 'Remove from read later');
+    } else {
+      readLaterButton.setAttribute('title', 'Mark as read later');
+      readLaterButton.setAttribute('aria-label', 'Mark as read later');
+    }
+  };
+
+  const handleDelete = async () => {
+    await handleDeleteNote(note.id, deleteButton);
+    // Close modal after successful deletion
+    closeNoteDetailModal();
+  };
+
   // Close handlers
   const handleClose = () => {
     closeNoteDetailModal();
@@ -4809,12 +4876,20 @@ function openNoteDetailModal(note) {
   };
 
   // Add event listeners
+  editButton.addEventListener('click', handleEdit);
+  starButton.addEventListener('click', handleStar);
+  readLaterButton.addEventListener('click', handleReadLater);
+  deleteButton.addEventListener('click', handleDelete);
   closeButton.addEventListener('click', handleClose);
   backdrop.addEventListener('click', handleBackdropClick);
   document.addEventListener('keydown', handleKeyboard);
 
   // Store cleanup function
   modal._cleanup = () => {
+    editButton.removeEventListener('click', handleEdit);
+    starButton.removeEventListener('click', handleStar);
+    readLaterButton.removeEventListener('click', handleReadLater);
+    deleteButton.removeEventListener('click', handleDelete);
     closeButton.removeEventListener('click', handleClose);
     backdrop.removeEventListener('click', handleBackdropClick);
     document.removeEventListener('keydown', handleKeyboard);

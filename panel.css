@@ -3163,13 +3163,23 @@ input:focus-visible,
   padding-right: calc(var(--spacing-2xl) + 48px); /* Space for close button */
 }
 
+/* [NOT-91] Updated to flexbox layout with actions on the right */
 .note-detail-header {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
   padding-bottom: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
+}
+
+.note-detail-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-width: 0;
 }
 
 .note-detail-source-link {
@@ -3284,5 +3294,91 @@ input:focus-visible,
 .note-detail-image:hover {
   transform: scale(1.05);
   box-shadow: var(--shadow-md);
+}
+
+
+/* [NOT-91] Detail Modal Header Layout - flexbox for source info and actions */
+.note-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.note-detail-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-width: 0;
+}
+
+/* [NOT-91] Action Buttons in Detail Modal */
+.note-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.note-detail-edit-button,
+.note-detail-star-button,
+.note-detail-read-later-button,
+.note-detail-delete-button {
+  padding: var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  transition: opacity var(--duration-micro) var(--ease-out-spring),
+              background var(--duration-micro) var(--ease-out-spring),
+              color var(--duration-micro) var(--ease-out-spring),
+              transform var(--duration-micro) var(--ease-out-spring);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note-detail-edit-button:hover,
+.note-detail-star-button:hover,
+.note-detail-read-later-button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+
+.note-detail-edit-button:active,
+.note-detail-star-button:active,
+.note-detail-read-later-button:active,
+.note-detail-delete-button:active {
+  transform: scale(0.95);
+}
+
+.note-detail-star-button.active,
+.note-detail-read-later-button.active {
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.note-detail-star-button.active:hover,
+.note-detail-read-later-button.active:hover {
+  background: var(--color-primary-light);
+  transform: scale(1.1);
+}
+
+.note-detail-delete-button:hover {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  transform: scale(1.1);
+}
+
+.note-detail-edit-button:disabled,
+.note-detail-star-button:disabled,
+.note-detail-read-later-button:disabled,
+.note-detail-delete-button:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
