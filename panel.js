@@ -1628,8 +1628,8 @@ function renderImagePreviews(containerId, images, isEditMode = false) {
 
 
 /**
- * [NOT-22] TagInput Component - Pill-based tag input with autocomplete
- * Creates an interactive tag input with pills for existing tags and autocomplete
+ * [NOT-22] [NOT-84] TagInput Component - Compact popover-based tag input
+ * Creates a compact tag display with popover for tag management
  */
 class TagInput {
   constructor(containerElement, initialTags = [], onChangeCallback = null) {
@@ -1640,26 +1640,33 @@ class TagInput {
     this.suggestions = [];
     this.selectedIndex = -1;
     this.localSuggestions = []; // [NOT-58] Tags from vector search (Tier 1)
+    this.isPopoverOpen = false; // [NOT-84] Track popover state
 
-    // [NOT-22] Create wrapper for input and suggestions
+    // [NOT-84] Create wrapper for compact trigger and popover
     this.wrapper = document.createElement('div');
+    this.wrapper.className = 'tag-input-wrapper';
     this.container.appendChild(this.wrapper);
+
+    // [NOT-84] Bind event handlers to maintain reference for removal
+    this.handleDocumentClick = this.handleDocumentClick.bind(this);
+    this.handleAddTagClick = this.handleAddTagClick.bind(this);
 
     this.render();
   }
 
   /**
-   * [NOT-58] Set local tag suggestions from vector search
-   * These are rendered as "ghost chips" with dashed blue borders
+   * [NOT-58] [NOT-84] Set local tag suggestions from vector search
+   * These will be shown in the popover when opened
    *
    * @param {Array<string>} suggestions - Array of tag names (without # prefix)
    */
   setLocalSuggestions(suggestions) {
-    this.localSuggestions = suggestions.filter(tag => {
-      const lowerTag = tag.toLowerCase();
-      return !this.tags.some(t => t.toLowerCase() === lowerTag);
-    });
-    this.renderTagSuggestions();
+    this.localSuggestions = suggestions.filter(tag => !this.isTagSelected(tag));
+
+    // [NOT-84] If popover is open, update suggestions
+    if (this.isPopoverOpen) {
+      this.updatePopoverSuggestions();
+    }
   }
 
   /**
@@ -1677,92 +1684,106 @@ class TagInput {
   }
 
   /**
-   * Render the tag input component
+   * [NOT-84] Render the compact tag input component
+   * Creates a trigger view with selected tags + Add button, and a popover for tag selection
    */
   render() {
+    // [NOT-84] Remove old event listeners first to prevent duplicates
+    if (this.addTagButton) {
+      this.addTagButton.removeEventListener('click', this.handleAddTagClick);
+    }
+    document.removeEventListener('click', this.handleDocumentClick);
+
     // Clear wrapper
     this.wrapper.innerHTML = '';
 
-    // Create input container
-    const inputContainer = document.createElement('div');
-    inputContainer.className = 'tag-input-container';
-    this.inputContainer = inputContainer;
+    // [NOT-84] Create compact trigger container
+    const triggerContainer = document.createElement('div');
+    triggerContainer.className = 'tag-trigger-container';
 
-    // Render existing tag pills
+    // [NOT-84] Render selected tags as clickable chips (click to remove)
     this.tags.forEach((tag, index) => {
-      const pill = this.createPill(tag, index);
-      inputContainer.appendChild(pill);
+      const chip = this.createSelectedChip(tag, index);
+      triggerContainer.appendChild(chip);
     });
 
-    // Create and append input field
-    this.inputField = document.createElement('input');
-    this.inputField.type = 'text';
-    this.inputField.className = 'tag-input-field';
-    this.inputField.placeholder = this.tags.length === 0 ? 'Type tags and press Enter or comma...' : 'Add more...';
-    this.inputField.value = this.inputValue;
+    // [NOT-84] Create "+ Add Tag" button
+    this.addTagButton = document.createElement('button');
+    this.addTagButton.type = 'button';
+    this.addTagButton.className = 'tag-add-button';
+    this.addTagButton.textContent = '+ Add Tag';
+    this.addTagButton.addEventListener('click', this.handleAddTagClick);
 
-    inputContainer.appendChild(this.inputField);
+    triggerContainer.appendChild(this.addTagButton);
+    this.wrapper.appendChild(triggerContainer);
 
-    // Create dropdown (hidden by default)
-    this.dropdown = document.createElement('div');
-    this.dropdown.className = 'tag-dropdown hidden';
-    inputContainer.appendChild(this.dropdown);
-
-    // Add input container to wrapper
-    this.wrapper.appendChild(inputContainer);
-
-    // Attach event listeners
-    this.attachEventListeners();
-
-    // Focus container makes input clickable
-    inputContainer.addEventListener('click', () => {
-      this.inputField.focus();
-    });
-
-    // [NOT-22] Render tag suggestions (recent tags)
-    this.renderTagSuggestions();
+    // [NOT-84] Create popover (hidden by default)
+    this.createPopover();
   }
 
   /**
-   * Create a tag pill element
+   * [NOT-84] Create a selected tag chip (click to toggle off/remove)
+   * @param {string} tag - The tag text
+   * @param {number} index - The tag index in the tags array
+   * @returns {HTMLElement} - The chip element
    */
-  createPill(tag, index) {
-    const pill = document.createElement('div');
-    pill.className = 'tag-pill';
+  createSelectedChip(tag, index) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'tag-chip tag-chip-selected';
+    chip.textContent = tag;
 
-    const label = document.createElement('span');
-    label.textContent = tag;
-
-    const removeBtn = document.createElement('span');
-    removeBtn.className = 'tag-pill-remove';
-    removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', (e) => {
+    // [NOT-84] Click to toggle off (unselect/remove)
+    chip.addEventListener('click', (e) => {
       e.stopPropagation();
       this.removeTag(index);
     });
 
-    pill.appendChild(label);
-    pill.appendChild(removeBtn);
-
-    return pill;
+    return chip;
   }
 
   /**
-   * Attach event listeners to input field
+   * [NOT-84] Create the popover element with search input and tag list
    */
-  attachEventListeners() {
-    this.inputField.addEventListener('input', (e) => {
+  createPopover() {
+    this.popover = document.createElement('div');
+    this.popover.className = 'tag-popover hidden';
+
+    // [NOT-84] Create search input (auto-focus when shown)
+    this.searchInput = document.createElement('input');
+    this.searchInput.type = 'text';
+    this.searchInput.className = 'tag-popover-search';
+    this.searchInput.placeholder = 'Search or create tags...';
+
+    // [NOT-84] Create tags list container
+    this.tagsList = document.createElement('div');
+    this.tagsList.className = 'tag-popover-list';
+
+    this.popover.appendChild(this.searchInput);
+    this.popover.appendChild(this.tagsList);
+    this.wrapper.appendChild(this.popover);
+
+    // [NOT-84] Attach event listeners to search input
+    this.attachPopoverListeners();
+  }
+
+  /**
+   * [NOT-84] Attach event listeners to popover search input
+   */
+  attachPopoverListeners() {
+    this.searchInput.addEventListener('input', (e) => {
       this.inputValue = e.target.value;
-      this.updateSuggestions();
+      this.updatePopoverSuggestions();
     });
 
-    this.inputField.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ',') {
+    this.searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        this.addTag();
-      } else if (e.key === 'Backspace' && this.inputValue === '') {
-        e.preventDefault();
-        this.removeLastTag();
+        if (this.selectedIndex >= 0 && this.suggestions[this.selectedIndex]) {
+          this.addTag(this.suggestions[this.selectedIndex]);
+        } else if (this.inputValue.trim()) {
+          this.addTag();
+        }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         this.navigateSuggestions(1);
@@ -1770,20 +1791,72 @@ class TagInput {
         e.preventDefault();
         this.navigateSuggestions(-1);
       } else if (e.key === 'Escape') {
-        this.hideSuggestions();
+        this.closePopover();
       }
     });
 
-    this.inputField.addEventListener('blur', () => {
-      // Delay to allow dropdown clicks
-      setTimeout(() => {
-        this.hideSuggestions();
-      }, 200);
+    // [NOT-84] Stop propagation to prevent document click from closing immediately
+    this.popover.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
   }
 
   /**
-   * Add a new tag
+   * [NOT-84] Handle Add Tag button click
+   * Opens the popover and focuses the search input
+   */
+  handleAddTagClick(e) {
+    e.stopPropagation();
+    if (this.isPopoverOpen) {
+      this.closePopover();
+    } else {
+      this.openPopover();
+    }
+  }
+
+  /**
+   * [NOT-84] Handle document click to close popover when clicking outside
+   */
+  handleDocumentClick(e) {
+    if (this.isPopoverOpen && !this.wrapper.contains(e.target)) {
+      this.closePopover();
+    }
+  }
+
+  /**
+   * [NOT-84] Open the popover and show available tags
+   */
+  openPopover() {
+    this.isPopoverOpen = true;
+    this.popover.classList.remove('hidden');
+    this.searchInput.value = '';
+    this.inputValue = '';
+    this.updatePopoverSuggestions();
+
+    // [NOT-84] Auto-focus the search input
+    setTimeout(() => {
+      this.searchInput.focus();
+    }, 50);
+
+    // [NOT-84] Listen for clicks outside to close
+    setTimeout(() => {
+      document.addEventListener('click', this.handleDocumentClick);
+    }, 100);
+  }
+
+  /**
+   * [NOT-84] Close the popover
+   */
+  closePopover() {
+    this.isPopoverOpen = false;
+    this.popover.classList.add('hidden');
+    this.selectedIndex = -1;
+    document.removeEventListener('click', this.handleDocumentClick);
+  }
+
+  /**
+   * [NOT-84] Add a new tag
+   * @param {string} tagText - Optional tag text to add (if not provided, uses inputValue)
    */
   addTag(tagText = null) {
     const text = (tagText || this.inputValue).trim();
@@ -1792,19 +1865,25 @@ class TagInput {
     // Remove # if user typed it
     const cleanTag = text.startsWith('#') ? text.substring(1) : text;
 
-    // [NOT-22] Don't add duplicates (case-insensitive check to prevent "JavaScript" and "javascript")
-    const lowerCleanTag = cleanTag.toLowerCase();
-    if (this.tags.some(t => t.toLowerCase() === lowerCleanTag)) {
+    // [NOT-84] Don't add duplicates (case-insensitive check)
+    if (this.isTagSelected(cleanTag)) {
       this.inputValue = '';
-      this.inputField.value = '';
-      this.hideSuggestions();
+      if (this.searchInput) {
+        this.searchInput.value = '';
+      }
       return;
     }
 
     this.tags.push(cleanTag);
     this.inputValue = '';
-    this.render(); // Re-renders input and suggestions
-    this.inputField.focus();
+
+    // [NOT-84] Re-render the trigger (selected tags)
+    this.render();
+
+    // [NOT-84] If popover is open, update suggestions
+    if (this.isPopoverOpen) {
+      this.updatePopoverSuggestions();
+    }
 
     if (this.onChange) {
       this.onChange(this.getTags());
@@ -1812,67 +1891,93 @@ class TagInput {
   }
 
   /**
-   * Remove a tag by index
+   * [NOT-84] Remove a tag by index (toggle off)
+   * @param {number} index - The index of the tag to remove
    */
   removeTag(index) {
     this.tags.splice(index, 1);
-    this.render(); // Re-renders input and suggestions
-    this.inputField.focus();
+
+    // [NOT-84] Re-render the trigger
+    this.render();
+
+    // [NOT-84] If popover is open, update suggestions
+    if (this.isPopoverOpen) {
+      this.updatePopoverSuggestions();
+    }
 
     if (this.onChange) {
       this.onChange(this.getTags());
     }
   }
 
-  /**
-   * Remove the last tag (for backspace)
-   */
-  removeLastTag() {
-    if (this.tags.length > 0) {
-      this.tags.pop();
-      this.render(); // Re-renders input and suggestions
-      this.inputField.focus();
-
-      if (this.onChange) {
-        this.onChange(this.getTags());
-      }
-    }
-  }
 
   /**
-   * Update autocomplete suggestions
+   * [NOT-84] Update popover suggestions based on search input
    */
-  updateSuggestions() {
-    if (!this.inputValue.trim()) {
-      this.hideSuggestions();
-      return;
-    }
-
+  updatePopoverSuggestions() {
     const query = this.inputValue.toLowerCase().trim();
-    const allTags = this.getAllExistingTags();
 
-    // Filter tags that match and aren't already added
-    this.suggestions = allTags.filter(tag =>
-      tag.toLowerCase().includes(query) && !this.tags.includes(tag)
-    );
+    if (!query) {
+      // [NOT-84] Show all available tags (recent + local suggestions)
+      this.suggestions = this.getAllAvailableTags();
+    } else {
+      // [NOT-84] Filter tags based on search query
+      const allTags = this.getAllExistingTags();
+      this.suggestions = allTags.filter(tag =>
+        tag.toLowerCase().includes(query) && !this.isTagSelected(tag)
+      );
+    }
 
     this.selectedIndex = -1;
-    this.renderSuggestions();
+    this.renderPopoverSuggestions();
   }
 
   /**
-   * Render autocomplete dropdown
+   * [NOT-84] Get all available tags (recent + local suggestions) that aren't selected
    */
-  renderSuggestions() {
-    this.dropdown.innerHTML = '';
+  getAllAvailableTags() {
+    const tags = new Set();
 
+    // [NOT-84] Add local suggestions first (from AI)
+    this.localSuggestions.forEach(tag => {
+      if (!this.isTagSelected(tag)) {
+        tags.add(tag);
+      }
+    });
+
+    // [NOT-84] Add recent tags
+    const recentTags = this.getRecentTags(20);
+    recentTags.forEach(tag => {
+      if (!this.isTagSelected(tag)) {
+        tags.add(tag);
+      }
+    });
+
+    return Array.from(tags);
+  }
+
+  /**
+   * [NOT-84] Check if a tag is already selected (case-insensitive)
+   */
+  isTagSelected(tag) {
+    const lowerTag = tag.toLowerCase();
+    return this.tags.some(t => t.toLowerCase() === lowerTag);
+  }
+
+  /**
+   * [NOT-84] Render popover tag suggestions
+   */
+  renderPopoverSuggestions() {
+    this.tagsList.innerHTML = '';
+
+    // [NOT-84] If user is typing and no matches, show "Create" option
     if (this.suggestions.length === 0 && this.inputValue.trim()) {
-      // [NOT-22] Show "Create" option using safe DOM manipulation (no innerHTML with user input)
-      const createOption = document.createElement('div');
-      createOption.className = 'tag-dropdown-option create';
+      const createOption = document.createElement('button');
+      createOption.type = 'button';
+      createOption.className = 'tag-popover-option create';
 
       const iconSpan = document.createElement('span');
-      iconSpan.className = 'tag-dropdown-icon';
+      iconSpan.className = 'tag-popover-icon';
       iconSpan.textContent = '+';
 
       createOption.appendChild(iconSpan);
@@ -1880,27 +1985,32 @@ class TagInput {
 
       createOption.addEventListener('click', () => {
         this.addTag();
+        this.closePopover();
       });
-      this.dropdown.appendChild(createOption);
-      this.dropdown.classList.remove('hidden');
+      this.tagsList.appendChild(createOption);
       return;
     }
 
+    // [NOT-84] Show recent/suggested tags
     if (this.suggestions.length === 0) {
-      this.hideSuggestions();
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'tag-popover-empty';
+      emptyMessage.textContent = 'No tags available';
+      this.tagsList.appendChild(emptyMessage);
       return;
     }
 
+    // [NOT-84] Render tag options
     this.suggestions.forEach((tag, index) => {
-      const option = document.createElement('div');
-      option.className = 'tag-dropdown-option';
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'tag-popover-option';
       if (index === this.selectedIndex) {
         option.classList.add('selected');
       }
 
-      // [NOT-16] Fix XSS vulnerability - use safe DOM creation instead of innerHTML
       const iconSpan = document.createElement('span');
-      iconSpan.className = 'tag-dropdown-icon';
+      iconSpan.className = 'tag-popover-icon';
       iconSpan.textContent = '#';
 
       option.appendChild(iconSpan);
@@ -1908,15 +2018,18 @@ class TagInput {
 
       option.addEventListener('click', () => {
         this.addTag(tag);
+        // [NOT-84] Clear search after adding
+        this.searchInput.value = '';
+        this.inputValue = '';
+        this.updatePopoverSuggestions();
+        this.searchInput.focus();
       });
-      this.dropdown.appendChild(option);
+      this.tagsList.appendChild(option);
     });
-
-    this.dropdown.classList.remove('hidden');
   }
 
   /**
-   * Navigate suggestions with arrow keys
+   * [NOT-84] Navigate popover suggestions with arrow keys
    */
   navigateSuggestions(direction) {
     if (this.suggestions.length === 0) return;
@@ -1929,113 +2042,17 @@ class TagInput {
       this.selectedIndex = -1;
     }
 
+    this.renderPopoverSuggestions();
+
+    // [NOT-84] Scroll selected item into view
     if (this.selectedIndex >= 0) {
-      this.inputValue = this.suggestions[this.selectedIndex];
-      this.inputField.value = this.inputValue;
+      const options = this.tagsList.querySelectorAll('.tag-popover-option');
+      if (options[this.selectedIndex]) {
+        options[this.selectedIndex].scrollIntoView({ block: 'nearest' });
+      }
     }
-
-    this.renderSuggestions();
   }
 
-  /**
-   * Hide suggestions dropdown
-   */
-  hideSuggestions() {
-    this.dropdown.classList.add('hidden');
-    this.selectedIndex = -1;
-  }
-
-  /**
-   * [NOT-22] Render recent tag suggestions below the input
-   * Shows the most recently used tags as clickable chips
-   */
-  renderTagSuggestions() {
-    // Remove existing suggestions container if any
-    const existingSuggestions = this.wrapper.querySelector('.tag-suggestions');
-    if (existingSuggestions) {
-      existingSuggestions.remove();
-    }
-
-    // [NOT-58] Get local suggestions (from vector search)
-    const availableLocalSuggestions = this.localSuggestions.filter(tag => {
-      const lowerTag = tag.toLowerCase();
-      return !this.tags.some(t => t.toLowerCase() === lowerTag);
-    });
-
-    // Get recent tags (sorted by most recent usage)
-    const recentTags = this.getRecentTags(10);
-
-    // Filter out already-added tags and local suggestions (to avoid duplicates)
-    const availableRecentTags = recentTags.filter(tag => {
-      const lowerTag = tag.toLowerCase();
-      return !this.tags.some(t => t.toLowerCase() === lowerTag) &&
-             !availableLocalSuggestions.some(s => s.toLowerCase() === lowerTag);
-    });
-
-    // Don't show suggestions if both are empty
-    if (availableLocalSuggestions.length === 0 && availableRecentTags.length === 0) {
-      return;
-    }
-
-    // Create suggestions container
-    const suggestionsContainer = document.createElement('div');
-    suggestionsContainer.className = 'tag-suggestions';
-
-    // [NOT-58] Render Local Suggestions (Ghost Chips - Dashed Blue)
-    if (availableLocalSuggestions.length > 0) {
-      const localLabel = document.createElement('span');
-      localLabel.className = 'tag-suggestions-label';
-      localLabel.textContent = 'Related:';
-      suggestionsContainer.appendChild(localLabel);
-
-      availableLocalSuggestions.forEach(tag => {
-        const chip = document.createElement('div');
-        chip.className = 'tag-suggestion-chip tag-suggestion-local';
-
-        const icon = document.createElement('span');
-        icon.className = 'tag-suggestion-icon';
-        icon.textContent = '+';
-
-        chip.appendChild(icon);
-        chip.appendChild(document.createTextNode(tag));
-
-        chip.addEventListener('click', () => {
-          this.addTag(tag);
-        });
-
-        suggestionsContainer.appendChild(chip);
-      });
-    }
-
-    // Render Recent Tags (Standard Chips)
-    if (availableRecentTags.length > 0) {
-      const recentLabel = document.createElement('span');
-      recentLabel.className = 'tag-suggestions-label';
-      recentLabel.textContent = 'Recent:';
-      recentLabel.style.marginLeft = availableLocalSuggestions.length > 0 ? 'var(--spacing-md)' : '0';
-      suggestionsContainer.appendChild(recentLabel);
-
-      availableRecentTags.forEach(tag => {
-        const chip = document.createElement('div');
-        chip.className = 'tag-suggestion-chip';
-
-        const icon = document.createElement('span');
-        icon.className = 'tag-suggestion-icon';
-        icon.textContent = '+';
-
-        chip.appendChild(icon);
-        chip.appendChild(document.createTextNode(tag));
-
-        chip.addEventListener('click', () => {
-          this.addTag(tag);
-        });
-
-        suggestionsContainer.appendChild(chip);
-      });
-    }
-
-    this.wrapper.appendChild(suggestionsContainer);
-  }
 
   /**
    * [NOT-22] Get most recently used tags
