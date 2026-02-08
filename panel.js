@@ -53,6 +53,11 @@ let filterState = {
 let isExpandedAll = false;
 let libraryListenersInitialized = false;
 
+// [NOT-76] Chat State (Module Scope)
+let chatListenersInitialized = false;
+let currentChatId = null;
+let isStreaming = false;
+
 // [NOT-39] Contextual Recall State
 let contextPillAnimated = false;
 let contextMatchType = null;
@@ -4752,9 +4757,8 @@ async function renderAIChatMode() {
     error('[NOT-51] Failed to load preferred model:', error);
   }
 
-  // State for current chat
-  let currentChatId = null;
-  let isStreaming = false;
+  // [NOT-76] Chat state moved to module scope to persist across navigations
+  // No local variables needed - using module-level currentChatId and isStreaming
 
   /**
    * Load or create chat session
@@ -5031,91 +5035,84 @@ async function renderAIChatMode() {
     }
   }
 
-  // [NOT-51] Remove old event listeners before adding new ones to prevent duplicates
-  sendButton.removeEventListener('click', sendMessage);
-  sendButton.addEventListener('click', sendMessage);
+  // [NOT-76] Guard: Only attach listeners once to prevent duplicates
+  if (!chatListenersInitialized) {
+    sendButton.addEventListener('click', sendMessage);
+    chatInput.addEventListener('input', handleInputChange);
+    chatInput.addEventListener('keydown', handleChatKeydown);
+    clearButton.addEventListener('click', clearChat);
 
-  chatInput.removeEventListener('input', handleInputChange);
-  chatInput.addEventListener('input', handleInputChange);
+    // [NOT-68] Stack Context Bar event delegation for Chat
+    const chatStackContext = document.getElementById('chat-stack-context');
+    if (chatStackContext) {
+      // Create new handler
+      const stackHandler = async (e) => {
+        const target = e.target.closest('.stack-chip, .stack-add-button, .remove');
 
-  chatInput.removeEventListener('keydown', handleChatKeydown);
-  chatInput.addEventListener('keydown', handleChatKeydown);
+        if (!target) return;
 
-  clearButton.removeEventListener('click', clearChat);
-  clearButton.addEventListener('click', clearChat);
+        // Handle "This Page" chip toggle
+        if (target.classList.contains('stack-chip-page')) {
+          await togglePageContext();
+          return;
+        }
 
-  // [NOT-68] Stack Context Bar event delegation for Chat
-  const chatStackContext = document.getElementById('chat-stack-context');
-  if (chatStackContext) {
-    // Remove old listener if exists
-    const oldHandler = chatStackContext._stackHandler;
-    if (oldHandler) {
-      chatStackContext.removeEventListener('click', oldHandler);
+        // [NOT-71] Handle tag chip click (toggle off when clicked)
+        if (target.classList.contains('stack-chip-tag')) {
+          const type = target.getAttribute('data-type');
+          const value = target.getAttribute('data-value');
+
+          if (type === 'tag' && value) {
+            toggleTagFilter(value);
+          } else if (type === 'starred') {
+            toggleSystemFilter('starred');
+          } else if (type === 'readLater') {
+            toggleSystemFilter('readLater');
+          }
+          return;
+        }
+
+        // Handle tag chip removal (click on X) - DEPRECATED: X icon removed in NOT-69
+        if (target.classList.contains('remove')) {
+          const chipElement = target.closest('.stack-chip');
+          const type = chipElement?.getAttribute('data-type');
+          const value = chipElement?.getAttribute('data-value');
+
+          if (type === 'tag' && value) {
+            toggleTagFilter(value);
+          } else if (type === 'starred') {
+            toggleSystemFilter('starred');
+          } else if (type === 'readLater') {
+            toggleSystemFilter('readLater');
+          }
+          return;
+        }
+
+        // Handle ghost chip activation (click on suggested tag)
+        if (target.classList.contains('stack-chip-ghost')) {
+          const tag = target.getAttribute('data-value');
+          if (tag) {
+            toggleTagFilter(tag);
+          }
+          return;
+        }
+
+        // [NOT-69] Handle Add button (show Stack Menu)
+        if (target.classList.contains('stack-add-button')) {
+          // [NOT-71] Open menu in current mode (no forced navigation)
+          toggleStackMenu();
+          return;
+        }
+      };
+
+      // Store handler reference and add listener
+      chatStackContext._stackHandler = stackHandler;
+      chatStackContext.addEventListener('click', stackHandler);
     }
 
-    // Create new handler
-    const stackHandler = async (e) => {
-      const target = e.target.closest('.stack-chip, .stack-add-button, .remove');
-
-      if (!target) return;
-
-      // Handle "This Page" chip toggle
-      if (target.classList.contains('stack-chip-page')) {
-        await togglePageContext();
-        return;
-      }
-
-      // [NOT-71] Handle tag chip click (toggle off when clicked)
-      if (target.classList.contains('stack-chip-tag')) {
-        const type = target.getAttribute('data-type');
-        const value = target.getAttribute('data-value');
-
-        if (type === 'tag' && value) {
-          toggleTagFilter(value);
-        } else if (type === 'starred') {
-          toggleSystemFilter('starred');
-        } else if (type === 'readLater') {
-          toggleSystemFilter('readLater');
-        }
-        return;
-      }
-
-      // Handle tag chip removal (click on X) - DEPRECATED: X icon removed in NOT-69
-      if (target.classList.contains('remove')) {
-        const chipElement = target.closest('.stack-chip');
-        const type = chipElement?.getAttribute('data-type');
-        const value = chipElement?.getAttribute('data-value');
-
-        if (type === 'tag' && value) {
-          toggleTagFilter(value);
-        } else if (type === 'starred') {
-          toggleSystemFilter('starred');
-        } else if (type === 'readLater') {
-          toggleSystemFilter('readLater');
-        }
-        return;
-      }
-
-      // Handle ghost chip activation (click on suggested tag)
-      if (target.classList.contains('stack-chip-ghost')) {
-        const tag = target.getAttribute('data-value');
-        if (tag) {
-          toggleTagFilter(tag);
-        }
-        return;
-      }
-
-      // [NOT-69] Handle Add button (show Stack Menu)
-      if (target.classList.contains('stack-add-button')) {
-        // [NOT-71] Open menu in current mode (no forced navigation)
-        toggleStackMenu();
-        return;
-      }
-    };
-
-    // Store handler reference and add listener
-    chatStackContext._stackHandler = stackHandler;
-    chatStackContext.addEventListener('click', stackHandler);
+    // [NOT-76] Mark listeners as initialized
+    chatListenersInitialized = true;
+    log('[NOT-76] Chat listeners initialized once');
   }
 
   // Load chat on mount
