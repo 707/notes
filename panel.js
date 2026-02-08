@@ -5182,56 +5182,22 @@ async function renderAIChatMode() {
           }
         }
 
-        // [NOT-92] Add current page context with strict URL matching
+        // [NOT-68] Add current page context with actual page content if active
         if (filterState.contextFilter) {
           try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab?.url && tab?.id) {
-              // [NOT-92] Strict URL matching - only inject if current tab matches filter
-              const currentUrl = tab.url;
-              let isContextActive = false;
+              contextParts.push(`\n\nCurrent Page Context:\n- Title: ${tab.title || 'Unknown'}\n- URL: ${tab.url}`);
 
-              // Check for exact URL match or hostname match
-              if (filterState.contextFilter === currentUrl) {
-                isContextActive = true;
-              } else if (currentUrl.includes('://')) {
-                // Try hostname comparison
-                try {
-                  const currentHostname = new URL(currentUrl).hostname;
-                  isContextActive = (filterState.contextFilter === currentHostname);
-                } catch (e) {
-                  // Invalid URL format, no match
-                  isContextActive = false;
-                }
-              }
-
-              // [NOT-92] Only inject context if URL matches
-              if (isContextActive) {
-                contextParts.push(`\n\nCurrent Page Context:\n- Title: ${tab.title || 'Unknown'}\n- URL: ${tab.url}`);
-
-                // [NOT-92] Get actual page text content (truncated to 8k chars)
-                try {
-                  const pageText = await getPageTextContent(tab.id);
-                  if (pageText) {
-                    contextParts.push(`\n- Page Content:\n${pageText}`);
-                    log('[NOT-92] Injected page content:', pageText.length, 'chars');
-                  } else {
-                    // [NOT-92] Explicit fallback if content extraction fails
-                    contextParts.push(`\n- Page Content: (Page content unavailable - restricted or empty)`);
-                    log('[NOT-92] Page content unavailable for:', tab.url);
-                  }
-                } catch (contentError) {
-                  // [NOT-92] Robust error handling for content extraction
-                  contextParts.push(`\n- Page Content: (Page content unavailable - restricted or empty)`);
-                  warn('[NOT-92] Could not extract page content:', contentError);
-                }
-              } else {
-                // [NOT-92] Context filter is stale - don't inject
-                log('[NOT-92] Context filter mismatch - not injecting. Filter:', filterState.contextFilter, 'Current:', currentUrl);
+              // [NOT-68] Get actual page text content (truncated to 8k chars)
+              const pageText = await getPageTextContent(tab.id);
+              if (pageText) {
+                contextParts.push(`\n- Page Content:\n${pageText}`);
+                log('[NOT-68] Injected page content:', pageText.length, 'chars');
               }
             }
           } catch (e) {
-            warn('[NOT-92] Could not get current page info:', e);
+            warn('[NOT-68] Could not get current page info:', e);
           }
         }
 
