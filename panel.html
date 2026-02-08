@@ -93,6 +93,11 @@
       <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="6 9 12 15 18 9"></polyline>
       </symbol>
+      <!-- [NOT-89] Arrow Up Icon for scroll to top -->
+      <symbol id="icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="19" x2="12" y2="5"></line>
+        <polyline points="5 12 12 5 19 12"></polyline>
+      </symbol>
       <!-- [NOT-33] Upload Icon -->
       <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -424,6 +429,11 @@
           <p>Ask me anything about your notes, get summaries, or have a conversation.</p>
         </div>
       </div>
+
+      <!-- [NOT-89] Scroll to Top Button -->
+      <button id="chat-scroll-top-btn" class="chat-scroll-top-btn hidden" title="Scroll to top" aria-label="Scroll to top of chat">
+        <svg class="icon icon-sm"><use href="#icon-arrow-up"></use></svg>
+      </button>
 
       <!-- [NOT-68] Stack Context Bar for Chat -->
       <!-- [NOT-73] Restructured with pinned controls and scrollable tags (created dynamically) -->

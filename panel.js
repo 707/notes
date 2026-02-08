@@ -5261,6 +5261,28 @@ async function renderAIChatMode() {
       chatStackContext.addEventListener('click', stackHandler);
     }
 
+    // [NOT-89] Scroll to top button
+    const scrollTopBtn = document.getElementById('chat-scroll-top-btn');
+    if (scrollTopBtn) {
+      // Show/hide button based on scroll position
+      chatMessages.addEventListener('scroll', () => {
+        // Show button when scrolled down more than 200px from top
+        if (chatMessages.scrollTop > 200) {
+          scrollTopBtn.classList.remove('hidden');
+        } else {
+          scrollTopBtn.classList.add('hidden');
+        }
+      });
+
+      // Scroll to top when button is clicked
+      scrollTopBtn.addEventListener('click', () => {
+        chatMessages.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      });
+    }
+
     // [NOT-76] Mark listeners as initialized
     chatListenersInitialized = true;
     log('[NOT-76] Chat listeners initialized once');
