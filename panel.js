@@ -1737,6 +1737,10 @@ class TagInput {
     chip.addEventListener('click', (e) => {
       e.stopPropagation();
       this.removeTag(index);
+      // [NOT-84] Close popover if open (clicking chip should close popup)
+      if (this.isPopoverOpen) {
+        this.closePopover();
+      }
     });
 
     return chip;
