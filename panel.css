@@ -1019,11 +1019,11 @@ body {
 }
 
 /* [NOT-69] Stack Menu - Popover for filters */
+/* [NOT-88] Centered with dynamic width for lightweight feel */
 .stack-menu {
   position: fixed;
   bottom: 80px;
-  left: var(--spacing-md);
-  right: var(--spacing-md);
+  left: 50%;
   background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -1032,15 +1032,18 @@ body {
   display: flex;
   flex-direction: column;
   max-height: 400px;
+  width: max-content;
+  min-width: 250px;
+  max-width: 90%;
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateX(-50%) translateY(10px);
   transition: opacity var(--duration-base) var(--ease-out-spring),
               transform var(--duration-base) var(--ease-out-spring);
 }
 
 .stack-menu:not(.hidden) {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 .stack-menu-header {
