@@ -60,6 +60,7 @@ class AIHarness {
   /**
    * Send a message and receive streaming response
    * [NOT-51] Now implements smart fallback chain when modelId is 'auto'
+   * [NOT-79] Enforces structured JSON response format: { thought, content, actions }
    * @param {string} text - User message text
    * @param {Object} context - Optional context (previous messages, model, etc.)
    * @param {Function} onChunk - Callback for streaming response chunks
@@ -80,6 +81,27 @@ class AIHarness {
     try {
       // Build messages array from context
       const messages = context.messages || [];
+
+      // [NOT-79] Prepend system message with structured response format instruction
+      // Only add if there isn't already a system message in the history
+      const hasSystemMessage = messages.some(m => m.role === 'system');
+      if (!hasSystemMessage) {
+        messages.unshift({
+          role: 'system',
+          content: `You must respond in JSON format with the following structure:
+{
+  "thought": "Your internal reasoning about how to answer this question",
+  "content": "The actual message to show the user",
+  "actions": []
+}
+
+The "thought" field is for your internal reasoning and will not be shown to the user.
+The "content" field is what the user will see as your response.
+The "actions" field is reserved for future agentic capabilities (leave empty for now).
+
+IMPORTANT: Return ONLY the JSON object. Do not include markdown code blocks or any other text.`
+        });
+      }
 
       // Add user message
       messages.push({

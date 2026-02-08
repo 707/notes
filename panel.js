@@ -5004,7 +5004,34 @@ async function renderAIChatMode() {
         // onComplete
         async () => {
           cursor.remove();
-          await window.database.addMessage(currentChatId, 'assistant', fullResponse);
+
+          // [NOT-79] Parse structured response (JSON format with thought, content, actions)
+          let contentToDisplay = fullResponse;
+          let contentToSave = fullResponse;
+
+          try {
+            // Try to parse as JSON
+            const structuredResponse = JSON.parse(fullResponse);
+
+            if (structuredResponse.thought && structuredResponse.content) {
+              // Valid structured response
+              log('[NOT-79] 💭 AI Thought:', structuredResponse.thought);
+              contentToDisplay = structuredResponse.content;
+              contentToSave = structuredResponse.content;
+
+              // Update the UI to show only the content
+              aiContentDiv.textContent = contentToDisplay;
+              log('[NOT-79] ✅ Parsed structured response successfully');
+            } else {
+              // JSON but not the expected structure - use raw response
+              log('[NOT-79] ⚠️  JSON response missing expected fields, using raw response');
+            }
+          } catch (parseError) {
+            // Not valid JSON - use raw response as fallback
+            log('[NOT-79] ℹ️  Response is not JSON, using raw text (this is ok for fallback)');
+          }
+
+          await window.database.addMessage(currentChatId, 'assistant', contentToSave);
           log('[NOT-46] Message sent and saved');
           isStreaming = false;
           chatInput.disabled = false;
