@@ -307,7 +307,6 @@ body {
   position: relative;
   z-index: 1;
   display: block;
-  min-height: 80px;
 }
 
 .source-card-header {
@@ -315,7 +314,6 @@ body {
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  min-height: 40px;
 }
 
 .source-card-body {
@@ -323,7 +321,6 @@ body {
   padding: var(--spacing-md);
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--color-border);
-  min-height: 40px;
 }
 
 .favicon {
