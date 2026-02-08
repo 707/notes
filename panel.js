@@ -2240,7 +2240,8 @@ async function renderCaptureMode(clipData = {}) {
     const url = document.getElementById('capture-url');
 
     if (favicon) favicon.src = clipData.metadata.favicon || '';
-    if (siteName) siteName.textContent = clipData.metadata.siteName || '';
+    // [NOT-83] Show page title instead of domain name for better UX
+    if (siteName) siteName.textContent = clipData.metadata.title || clipData.metadata.siteName || '';
     if (url) url.textContent = clipData.url || '';
 
     // [NOT-58] [NOT-83] Render dynamic source bar based on flexible_metadata.type
@@ -3473,7 +3474,8 @@ function createNoteCard(note, index = 0) {
 
   // Populate source info
   card.querySelector('.note-favicon').src = note.metadata.favicon;
-  card.querySelector('.note-site-name').textContent = note.metadata.siteName;
+  // [NOT-83] Show page title instead of domain name for better UX
+  card.querySelector('.note-site-name').textContent = note.metadata.title || note.metadata.siteName;
   card.querySelector('.note-date').textContent = formatDate(note.timestamp);
 
   // [NOT-33] Handle image thumbnails if present
@@ -5844,11 +5846,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         log('⚠️  [NOT-40] Gemini Nano is not available. Synthesis features will be disabled.');
       }
-    } catch (error) {
-      error('❌ [NOT-40] Error checking Gemini availability:', error);
+    } catch (err) {
+      error('❌ [NOT-40] Error checking Gemini availability:', err);
       geminiAvailable = false;
     }
-  } catch (error) {
-    error('❌ Error initializing panel:', error);
+  } catch (err) {
+    error('❌ Error initializing panel:', err);
   }
 });

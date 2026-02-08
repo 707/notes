@@ -1618,6 +1618,7 @@ body {
   min-width: 0;
 }
 
+/* [NOT-83] Shows page title (or domain name as fallback) */
 .note-site-name {
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -1625,7 +1626,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  max-width: 300px; /* Increased to accommodate page titles */
 }
 
 /* [NOT-26] Date appears inline next to source name with separator */
