@@ -44,15 +44,15 @@ var require_url = __commonJS({
   }
 });
 
-// (disabled):node_modules/onnxruntime-node/dist/index.js
+// (disabled):../../../node_modules/onnxruntime-node/dist/index.js
 var require_dist = __commonJS({
-  "(disabled):node_modules/onnxruntime-node/dist/index.js"() {
+  "(disabled):../../../node_modules/onnxruntime-node/dist/index.js"() {
   }
 });
 
-// node_modules/onnxruntime-common/dist/ort-common.node.js
+// ../../../node_modules/onnxruntime-common/dist/ort-common.node.js
 var require_ort_common_node = __commonJS({
-  "node_modules/onnxruntime-common/dist/ort-common.node.js"(exports2) {
+  "../../../node_modules/onnxruntime-common/dist/ort-common.node.js"(exports2) {
     (() => {
       "use strict";
       var e = { d: (t2, r2) => {
@@ -350,9 +350,9 @@ var require_ort_common_node = __commonJS({
   }
 });
 
-// node_modules/onnxruntime-web/dist/ort-web.min.js
+// ../../../node_modules/onnxruntime-web/dist/ort-web.min.js
 var require_ort_web_min = __commonJS({
-  "node_modules/onnxruntime-web/dist/ort-web.min.js"(exports, module) {
+  "../../../node_modules/onnxruntime-web/dist/ort-web.min.js"(exports, module) {
     !function(t, e) {
       if ("object" == typeof exports && "object" == typeof module) module.exports = e(require_ort_common_node());
       else if ("function" == typeof define && define.amd) define([], e);
@@ -13381,13 +13381,13 @@ ${t2}`);
   }
 });
 
-// (disabled):node_modules/sharp/lib/index.js
+// (disabled):../../../node_modules/sharp/lib/index.js
 var require_lib = __commonJS({
-  "(disabled):node_modules/sharp/lib/index.js"() {
+  "(disabled):../../../node_modules/sharp/lib/index.js"() {
   }
 });
 
-// node_modules/@xenova/transformers/src/utils/core.js
+// ../../../node_modules/@xenova/transformers/src/utils/core.js
 function dispatchCallback(progress_callback, data) {
   if (progress_callback) progress_callback(data);
 }
@@ -13460,16 +13460,16 @@ function calculateReflectOffset(i, w) {
   return Math.abs((i + w) % (2 * w) - w);
 }
 
-// node_modules/@xenova/transformers/src/utils/hub.js
+// ../../../node_modules/@xenova/transformers/src/utils/hub.js
 var import_fs2 = __toESM(require_fs(), 1);
 var import_path2 = __toESM(require_path(), 1);
 
-// node_modules/@xenova/transformers/src/env.js
+// ../../../node_modules/@xenova/transformers/src/env.js
 var import_fs = __toESM(require_fs(), 1);
 var import_path = __toESM(require_path(), 1);
 var import_url = __toESM(require_url(), 1);
 
-// node_modules/@xenova/transformers/src/backends/onnx.js
+// ../../../node_modules/@xenova/transformers/src/backends/onnx.js
 var ONNX_NODE = __toESM(require_dist(), 1);
 var ONNX_WEB = __toESM(require_ort_web_min(), 1);
 var ONNX;
@@ -13488,7 +13488,7 @@ if (typeof process !== "undefined" && process?.release?.name === "node") {
   }
 }
 
-// node_modules/@xenova/transformers/src/env.js
+// ../../../node_modules/@xenova/transformers/src/env.js
 var { env: onnx_env } = ONNX;
 var VERSION = "2.17.2";
 var WEB_CACHE_AVAILABLE = typeof self !== "undefined" && "caches" in self;
@@ -13531,7 +13531,7 @@ function isEmpty(obj) {
   return Object.keys(obj).length === 0;
 }
 
-// node_modules/@xenova/transformers/src/utils/hub.js
+// ../../../node_modules/@xenova/transformers/src/utils/hub.js
 var FileResponse = class _FileResponse {
   /**
    * Creates a new `FileResponse` object.
@@ -13938,7 +13938,7 @@ function pathJoin(...parts) {
   return parts.join("/");
 }
 
-// node_modules/@xenova/transformers/src/utils/maths.js
+// ../../../node_modules/@xenova/transformers/src/utils/maths.js
 function interpolate_data(input, [in_channels, in_height, in_width], [out_height, out_width], mode = "bilinear", align_corners = false) {
   const x_scale = out_width / in_width;
   const y_scale = out_height / in_height;
@@ -14589,7 +14589,7 @@ function bankers_round(x) {
   return br;
 }
 
-// node_modules/@xenova/transformers/src/utils/tensor.js
+// ../../../node_modules/@xenova/transformers/src/utils/tensor.js
 var DataTypeMap = Object.freeze({
   float32: Float32Array,
   float64: Float64Array,
@@ -15395,7 +15395,7 @@ function quantize_embeddings(tensor, precision) {
   return new Tensor(dtype, outputData, [tensor.dims[0], tensor.dims[1] / 8]);
 }
 
-// node_modules/@xenova/transformers/src/utils/data-structures.js
+// ../../../node_modules/@xenova/transformers/src/utils/data-structures.js
 var PriorityQueue = class {
   /**
    * Create a new PriorityQueue.
@@ -15746,7 +15746,7 @@ var TokenLatticeNode = class _TokenLatticeNode {
   }
 };
 
-// node_modules/@huggingface/jinja/dist/index.js
+// ../../../node_modules/@huggingface/jinja/dist/index.js
 var TOKEN_TYPES = Object.freeze({
   Text: "Text",
   // The text between Jinja statements or expressions
@@ -17352,7 +17352,7 @@ var Template = class {
   }
 };
 
-// node_modules/@xenova/transformers/src/tokenizers.js
+// ../../../node_modules/@xenova/transformers/src/tokenizers.js
 async function loadTokenizer(pretrained_model_name_or_path, options) {
   const info = await Promise.all([
     getModelJSON(pretrained_model_name_or_path, "tokenizer.json", true, options),
@@ -20605,7 +20605,7 @@ __publicField(AutoTokenizer, "TOKENIZER_CLASS_MAPPING", {
   PreTrainedTokenizer
 });
 
-// node_modules/@xenova/transformers/src/configs.js
+// ../../../node_modules/@xenova/transformers/src/configs.js
 async function loadConfig(pretrained_model_name_or_path, options) {
   let info = await getModelJSON(pretrained_model_name_or_path, "config.json", true, options);
   return info;
@@ -20654,7 +20654,7 @@ var AutoConfig = class {
   }
 };
 
-// node_modules/@xenova/transformers/src/utils/generation.js
+// ../../../node_modules/@xenova/transformers/src/utils/generation.js
 var LogitsProcessorList = class extends Callable {
   /**
    * Constructs a new instance of `LogitsProcessorList`.
@@ -21259,7 +21259,7 @@ var BeamSearchSampler = class extends Sampler {
   }
 };
 
-// node_modules/@xenova/transformers/src/models.js
+// ../../../node_modules/@xenova/transformers/src/models.js
 var { InferenceSession, Tensor: ONNXTensor2, env: env2 } = ONNX;
 var MODEL_TYPES = {
   EncoderOnly: 0,
@@ -24850,7 +24850,7 @@ var VitsModelOutput = class extends ModelOutput {
   }
 };
 
-// node_modules/@xenova/transformers/src/utils/image.js
+// ../../../node_modules/@xenova/transformers/src/utils/image.js
 var import_sharp = __toESM(require_lib(), 1);
 var BROWSER_ENV = typeof self !== "undefined";
 var WEBWORKER_ENV = BROWSER_ENV && self.constructor.name === "DedicatedWorkerGlobalScope";
@@ -25409,7 +25409,7 @@ var RawImage = class _RawImage {
   }
 };
 
-// node_modules/@xenova/transformers/src/utils/audio.js
+// ../../../node_modules/@xenova/transformers/src/utils/audio.js
 async function read_audio(url2, sampling_rate) {
   if (typeof AudioContext === "undefined") {
     throw Error(
@@ -25754,7 +25754,7 @@ function window_function(window_length, name2, {
   return window2;
 }
 
-// node_modules/@xenova/transformers/src/processors.js
+// ../../../node_modules/@xenova/transformers/src/processors.js
 function center_to_corners_format([centerX, centerY, width, height]) {
   return [
     centerX - width / 2,
@@ -27426,7 +27426,7 @@ __publicField(AutoProcessor, "PROCESSOR_CLASS_MAPPING", {
   OwlViTProcessor
 });
 
-// node_modules/@xenova/transformers/src/pipelines.js
+// ../../../node_modules/@xenova/transformers/src/pipelines.js
 async function prepareImages(images) {
   if (!Array.isArray(images)) {
     images = [images];

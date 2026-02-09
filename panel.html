@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,119 +8,148 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="panel.css">
 </head>
+
 <body>
   <!-- SVG Icon Sprite -->
   <div style="display: none;">
     <svg xmlns="http://www.w3.org/2000/svg">
-      <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"></circle>
         <path d="m21 21-4.35-4.35"></path>
       </symbol>
-      <symbol id="icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <line x1="5" y1="12" x2="19" y2="12"></line>
         <polyline points="12 5 19 12 12 19"></polyline>
       </symbol>
-      <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <line x1="19" y1="12" x2="5" y2="12"></line>
         <polyline points="12 19 5 12 12 5"></polyline>
       </symbol>
-      <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </symbol>
-      <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="3 6 5 6 21 6"></polyline>
         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
       </symbol>
-      <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
       </symbol>
-      <symbol id="icon-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
         <line x1="7" y1="7" x2="7.01" y2="7"></line>
       </symbol>
-      <symbol id="icon-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
       </symbol>
-      <symbol id="icon-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
         <polyline points="14 2 14 8 20 8"></polyline>
         <line x1="16" y1="13" x2="8" y2="13"></line>
         <line x1="16" y1="17" x2="8" y2="17"></line>
       </symbol>
-      <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"></circle>
         <polyline points="12 6 12 12 16 14"></polyline>
       </symbol>
-      <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
       </symbol>
-      <symbol id="icon-maximize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-maximize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="15 3 21 3 21 9"></polyline>
         <polyline points="9 21 3 21 3 15"></polyline>
         <line x1="21" y1="3" x2="14" y2="10"></line>
         <line x1="3" y1="21" x2="10" y2="14"></line>
       </symbol>
-      <symbol id="icon-minimize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-minimize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="4 14 10 14 10 20"></polyline>
         <polyline points="20 10 14 10 14 4"></polyline>
         <line x1="14" y1="10" x2="21" y2="3"></line>
         <line x1="3" y1="21" x2="10" y2="14"></line>
       </symbol>
-      <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
       </symbol>
       <!-- [NOT-25] Star Icon -->
-      <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polygon
+          points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+        </polygon>
       </symbol>
       <!-- [NOT-29] Download Icon -->
-      <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
         <polyline points="7 10 12 15 17 10"></polyline>
         <line x1="12" y1="15" x2="12" y2="3"></line>
       </symbol>
       <!-- [NOT-33] Chevron Icons for Lightbox Navigation -->
-      <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="15 18 9 12 15 6"></polyline>
       </symbol>
-      <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="9 18 15 12 9 6"></polyline>
       </symbol>
       <!-- [NOT-83] Chevron Down Icon -->
-      <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="6 9 12 15 18 9"></polyline>
       </symbol>
       <!-- [NOT-33] Upload Icon -->
-      <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
         <polyline points="17 8 12 3 7 8"></polyline>
         <line x1="12" y1="3" x2="12" y2="15"></line>
       </symbol>
       <!-- [NOT-33] Image Icon -->
-      <symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
         <circle cx="8.5" cy="8.5" r="1.5"></circle>
         <polyline points="21 15 16 10 5 21"></polyline>
       </symbol>
       <!-- [NOT-34] Grid Icon (Library) -->
-      <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="7" height="7"></rect>
         <rect x="14" y="3" width="7" height="7"></rect>
         <rect x="14" y="14" width="7" height="7"></rect>
         <rect x="3" y="14" width="7" height="7"></rect>
       </symbol>
       <!-- [NOT-34] Chat Icon (AI) -->
-      <symbol id="icon-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
       </symbol>
       <!-- [NOT-34] Settings Icon (Gears) -->
-      <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        <path
+          d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+        </path>
       </symbol>
     </svg>
   </div>
@@ -129,14 +159,22 @@
     <nav class="menu-bar">
       <!-- [NOT-34] Left Navigation: Create + Library + AI-->
       <div class="menu-left">
-        <button id="create-note-button" class="menu-action-button" title="Create a new note" aria-label="Create a new note">
-          <svg class="icon icon-sm"><use href="#icon-plus"></use></svg>
+        <button id="create-note-button" class="menu-action-button" title="Create a new note"
+          aria-label="Create a new note">
+          <svg class="icon icon-sm">
+            <use href="#icon-plus"></use>
+          </svg>
         </button>
-        <button id="library-button" class="menu-action-button" title="View your note library" aria-label="View your note library">
-          <svg class="icon icon-sm"><use href="#icon-grid"></use></svg>
+        <button id="library-button" class="menu-action-button" title="View your note library"
+          aria-label="View your note library">
+          <svg class="icon icon-sm">
+            <use href="#icon-grid"></use>
+          </svg>
         </button>
         <button id="ai-button" class="menu-action-button" title="Open AI assistant" aria-label="Open AI assistant">
-          <svg class="icon icon-sm"><use href="#icon-chat"></use></svg>
+          <svg class="icon icon-sm">
+            <use href="#icon-chat"></use>
+          </svg>
         </button>
       </div>
 
@@ -146,13 +184,17 @@
       <div class="menu-right">
         <div class="brand-logo">Klue</div>
         <button id="settings-button" class="menu-action-button" title="Open settings" aria-label="Open settings">
-          <svg class="icon icon-sm"><use href="#icon-settings"></use></svg>
+          <svg class="icon icon-sm">
+            <use href="#icon-settings"></use>
+          </svg>
         </button>
       </div>
 
       <!-- Back button (shown in capture mode) -->
       <button id="back-button" class="menu-back hidden" title="Go back" aria-label="Go back to previous view">
-        <svg class="icon icon-sm"><use href="#icon-arrow-left"></use></svg>
+        <svg class="icon icon-sm">
+          <use href="#icon-arrow-left"></use>
+        </svg>
         <span>Back</span>
       </button>
     </nav>
@@ -221,12 +263,8 @@
 
       <div class="input-section">
         <label for="capture-notes" class="section-label">Your Notes</label>
-        <textarea
-          id="capture-notes"
-          class="notes-input"
-          placeholder="Add your thoughts, context, or questions..."
-          rows="4"
-        ></textarea>
+        <textarea id="capture-notes" class="notes-input" placeholder="Add your thoughts, context, or questions..."
+          rows="4"></textarea>
       </div>
 
       <!-- [NOT-84] Combined Tags and Images section without labels -->
@@ -237,19 +275,27 @@
           <!-- [NOT-83] [NOT-84] Consolidated Add Image Menu -->
           <div class="add-image-menu-wrapper">
             <button id="add-image-menu-button" class="add-image-menu-button" type="button" title="Add images">
-              <svg class="icon icon-sm"><use href="#icon-image"></use></svg>
+              <svg class="icon icon-sm">
+                <use href="#icon-image"></use>
+              </svg>
               <span>Add Image</span>
-              <svg class="icon icon-xs chevron"><use href="#icon-chevron-down"></use></svg>
+              <svg class="icon icon-xs chevron">
+                <use href="#icon-chevron-down"></use>
+              </svg>
             </button>
 
             <!-- Dropdown Menu -->
             <div id="image-menu-dropdown" class="image-menu-dropdown hidden">
               <button class="image-menu-item" data-action="upload" type="button">
-                <svg class="icon icon-sm"><use href="#icon-upload"></use></svg>
+                <svg class="icon icon-sm">
+                  <use href="#icon-upload"></use>
+                </svg>
                 <span>Upload from Device</span>
               </button>
               <button class="image-menu-item" data-action="capture" type="button">
-                <svg class="icon icon-sm"><use href="#icon-image"></use></svg>
+                <svg class="icon icon-sm">
+                  <use href="#icon-image"></use>
+                </svg>
                 <span>Capture from Webpage</span>
               </button>
             </div>
@@ -267,16 +313,23 @@
 
       <!-- [NOT-58] Pulse Pill - AI Metadata Enhancement -->
       <div class="input-section hidden">
-        <button id="pulse-pill-button" class="pulse-pill" type="button" data-state="idle" title="Use AI to suggest tags and enrich metadata">
-          <svg class="pulse-pill-icon icon icon-sm"><use href="#icon-chat"></use></svg>
+        <button id="pulse-pill-button" class="pulse-pill" type="button" data-state="idle"
+          title="Use AI to suggest tags and enrich metadata">
+          <svg class="pulse-pill-icon icon icon-sm">
+            <use href="#icon-chat"></use>
+          </svg>
           <span class="pulse-pill-text">Analyze Page</span>
-          <svg class="pulse-pill-check icon icon-sm hidden"><use href="#icon-check"></use></svg>
+          <svg class="pulse-pill-check icon icon-sm hidden">
+            <use href="#icon-check"></use>
+          </svg>
         </button>
       </div>
 
       <button id="save-button" class="save-button">
         <span class="button-text">Save Clip</span>
-        <svg class="button-icon icon icon-sm"><use href="#icon-arrow-right"></use></svg>
+        <svg class="button-icon icon icon-sm">
+          <use href="#icon-arrow-right"></use>
+        </svg>
       </button>
     </div>
 
@@ -289,16 +342,11 @@
         <!-- Unified Filter Component -->
         <div class="unified-filter">
           <div class="filter-input-wrapper">
-            <svg class="filter-icon icon icon-sm"><use href="#icon-search"></use></svg>
-            <input
-              id="filter-input"
-              type="text"
-              class="filter-input"
-              placeholder="Search, filter, or sort..."
-              autocomplete="off"
-              aria-label="Search and filter clips"
-              aria-expanded="false"
-            >
+            <svg class="filter-icon icon icon-sm">
+              <use href="#icon-search"></use>
+            </svg>
+            <input id="filter-input" type="text" class="filter-input" placeholder="Search, filter, or sort..."
+              autocomplete="off" aria-label="Search and filter clips" aria-expanded="false">
             <div id="search-loading" class="search-loading hidden">
               <span></span><span></span><span></span>
             </div>
@@ -347,17 +395,22 @@
         <!-- Empty state -->
         <div id="empty-state" class="empty-state">
           <div class="empty-icon">
-            <svg class="icon icon-xxl"><use href="#icon-file-text"></use></svg>
+            <svg class="icon icon-xxl">
+              <use href="#icon-file-text"></use>
+            </svg>
           </div>
           <h2>Welcome to Klue.</h2>
-          <p>Start capturing knowledge by adding a note, or toggle <strong>This Page</strong> to surface related insights from your current context.</p>
+          <p>Start capturing knowledge by adding a note, or toggle <strong>This Page</strong> to surface related
+            insights from your current context.</p>
           <p class="empty-prompt">What would you like to know about this page?</p>
         </div>
 
         <!-- Search empty state -->
         <div id="search-empty-state" class="empty-state hidden">
           <div class="empty-icon">
-            <svg class="icon icon-xxl"><use href="#icon-search"></use></svg>
+            <svg class="icon icon-xxl">
+              <use href="#icon-search"></use>
+            </svg>
           </div>
           <h2>No results found</h2>
           <p id="search-empty-query"></p>
@@ -374,15 +427,13 @@
 
         <!-- [NOT-60] [NOT-85] Assistant Input Area - Uses same classes as chat-input-area for consistency -->
         <div class="chat-input-area">
-          <textarea
-            id="assistant-input"
-            class="chat-input"
-            placeholder="Ask about your notes..."
-            rows="1"
-            aria-label="Assistant message input"
-          ></textarea>
-          <button id="send-assistant-button" class="send-chat-button" title="Send message" aria-label="Send message" disabled>
-            <svg class="icon icon-sm"><use href="#icon-arrow-right"></use></svg>
+          <textarea id="assistant-input" class="chat-input" placeholder="Ask about your notes..." rows="1"
+            aria-label="Assistant message input"></textarea>
+          <button id="send-assistant-button" class="send-chat-button" title="Send message" aria-label="Send message"
+            disabled>
+            <svg class="icon icon-sm">
+              <use href="#icon-arrow-right"></use>
+            </svg>
           </button>
         </div>
       </div>
@@ -393,8 +444,11 @@
       <!-- [NOT-51] Chat Header - Simplified (model selection moved to Settings) -->
       <div class="chat-header">
         <h2 class="chat-title">AI Assistant</h2>
-        <button id="clear-chat-button" class="clear-chat-button" title="Clear chat history" aria-label="Clear chat history">
-          <svg class="icon icon-sm"><use href="#icon-trash"></use></svg>
+        <button id="clear-chat-button" class="clear-chat-button" title="Clear chat history"
+          aria-label="Clear chat history">
+          <svg class="icon icon-sm">
+            <use href="#icon-trash"></use>
+          </svg>
         </button>
       </div>
 
@@ -403,7 +457,9 @@
         <!-- Empty state -->
         <div id="chat-empty-state" class="chat-empty-state">
           <div class="empty-icon">
-            <svg class="icon icon-xxl"><use href="#icon-chat"></use></svg>
+            <svg class="icon icon-xxl">
+              <use href="#icon-chat"></use>
+            </svg>
           </div>
           <h2>AI Assistant</h2>
           <p>Ask me anything about your notes, get summaries, or have a conversation.</p>
@@ -416,15 +472,12 @@
 
       <!-- Chat Input -->
       <div class="chat-input-area">
-        <textarea
-          id="chat-input"
-          class="chat-input"
-          placeholder="Ask me anything..."
-          rows="1"
-          aria-label="Chat message input"
-        ></textarea>
+        <textarea id="chat-input" class="chat-input" placeholder="Ask me anything..." rows="1"
+          aria-label="Chat message input"></textarea>
         <button id="send-chat-button" class="send-chat-button" title="Send message" aria-label="Send message" disabled>
-          <svg class="icon icon-sm"><use href="#icon-arrow-right"></use></svg>
+          <svg class="icon icon-sm">
+            <use href="#icon-arrow-right"></use>
+          </svg>
         </button>
       </div>
     </div>
@@ -450,7 +503,8 @@
               <option value="auto">Smart Auto (Recommended)</option>
               <!-- Options will be populated by JavaScript -->
             </select>
-            <p class="settings-hint">Smart Auto uses an intelligent fallback chain prioritized by context window size.</p>
+            <p class="settings-hint">Smart Auto uses an intelligent fallback chain prioritized by context window size.
+            </p>
           </div>
 
           <div class="settings-field">
@@ -461,15 +515,10 @@
               </a>
             </label>
             <div class="settings-input-wrapper">
-              <input
-                type="password"
-                id="openrouter-api-key"
-                class="settings-input"
-                placeholder="sk-or-v1-..."
-                autocomplete="off"
-                aria-label="OpenRouter API Key"
-              >
-              <button id="toggle-api-key-visibility" class="settings-input-icon" type="button" title="Toggle visibility" aria-label="Toggle API key visibility">
+              <input type="password" id="openrouter-api-key" class="settings-input" placeholder="sk-or-v1-..."
+                autocomplete="off" aria-label="OpenRouter API Key">
+              <button id="toggle-api-key-visibility" class="settings-input-icon" type="button" title="Toggle visibility"
+                aria-label="Toggle API key visibility">
                 👁️
               </button>
             </div>
@@ -478,7 +527,9 @@
 
           <div class="settings-actions">
             <button id="save-settings-button" class="settings-button primary">
-              <svg class="icon icon-sm"><use href="#icon-check"></use></svg>
+              <svg class="icon icon-sm">
+                <use href="#icon-check"></use>
+              </svg>
               Save Changes
             </button>
             <button id="test-api-key-button" class="settings-button secondary">
@@ -506,17 +557,25 @@
         </div>
         <div class="note-actions">
           <button class="edit-button" title="Edit note" aria-label="Edit note">
-            <svg class="icon icon-sm"><use href="#icon-edit"></use></svg>
+            <svg class="icon icon-sm">
+              <use href="#icon-edit"></use>
+            </svg>
           </button>
           <!-- [NOT-25] Star button -->
           <button class="star-button" title="Star note" aria-label="Star note">
-            <svg class="icon icon-sm"><use href="#icon-star"></use></svg>
+            <svg class="icon icon-sm">
+              <use href="#icon-star"></use>
+            </svg>
           </button>
           <button class="read-later-button" title="Mark as read later" aria-label="Mark as read later">
-            <svg class="icon icon-sm"><use href="#icon-clock"></use></svg>
+            <svg class="icon icon-sm">
+              <use href="#icon-clock"></use>
+            </svg>
           </button>
           <button class="delete-button" title="Delete">
-            <svg class="icon icon-sm"><use href="#icon-trash"></use></svg>
+            <svg class="icon icon-sm">
+              <use href="#icon-trash"></use>
+            </svg>
           </button>
         </div>
       </div>
@@ -542,15 +601,20 @@
   <!-- [NOT-69] Stack Menu - Popover for filters -->
   <div id="stack-menu" class="stack-menu hidden">
     <div class="stack-menu-header">
-      <input type="text" id="stack-menu-search" class="stack-menu-search" placeholder="Filter tags..." aria-label="Filter tags">
+      <input type="text" id="stack-menu-search" class="stack-menu-search" placeholder="Filter tags..."
+        aria-label="Filter tags">
     </div>
     <div class="stack-menu-section">
       <button class="stack-menu-item" data-type="starred" aria-label="Filter by starred notes">
-        <svg class="icon icon-sm"><use href="#icon-star"></use></svg>
+        <svg class="icon icon-sm">
+          <use href="#icon-star"></use>
+        </svg>
         <span>Starred</span>
       </button>
       <button class="stack-menu-item" data-type="readLater" aria-label="Filter by read later notes">
-        <svg class="icon icon-sm"><use href="#icon-clock"></use></svg>
+        <svg class="icon icon-sm">
+          <use href="#icon-clock"></use>
+        </svg>
         <span>Read Later</span>
       </button>
     </div>
@@ -565,14 +629,20 @@
     <div class="lightbox-backdrop"></div>
     <div class="lightbox-content">
       <button class="lightbox-close" title="Close" aria-label="Close lightbox">
-        <svg class="icon icon-md"><use href="#icon-x"></use></svg>
+        <svg class="icon icon-md">
+          <use href="#icon-x"></use>
+        </svg>
       </button>
       <!-- [NOT-33] Navigation Arrows -->
       <button class="lightbox-prev hidden" title="Previous image" aria-label="Previous image">
-        <svg class="icon icon-md"><use href="#icon-chevron-left"></use></svg>
+        <svg class="icon icon-md">
+          <use href="#icon-chevron-left"></use>
+        </svg>
       </button>
       <button class="lightbox-next hidden" title="Next image" aria-label="Next image">
-        <svg class="icon icon-md"><use href="#icon-chevron-right"></use></svg>
+        <svg class="icon icon-md">
+          <use href="#icon-chevron-right"></use>
+        </svg>
       </button>
       <img class="lightbox-image" src="" alt="Full size image">
       <!-- [NOT-33] Image Counter -->
@@ -580,7 +650,9 @@
         <span class="lightbox-counter-current">1</span> / <span class="lightbox-counter-total">1</span>
       </div>
       <button class="lightbox-download" title="Download image" aria-label="Download image">
-        <svg class="icon icon-sm"><use href="#icon-download"></use></svg>
+        <svg class="icon icon-sm">
+          <use href="#icon-download"></use>
+        </svg>
       </button>
     </div>
   </div>
@@ -590,7 +662,9 @@
     <div class="note-detail-backdrop"></div>
     <div class="note-detail-content">
       <button class="note-detail-close" title="Close" aria-label="Close note details">
-        <svg class="icon icon-md"><use href="#icon-x"></use></svg>
+        <svg class="icon icon-md">
+          <use href="#icon-x"></use>
+        </svg>
       </button>
 
       <div class="note-detail-scroll">
@@ -637,6 +711,7 @@
   <script src="ai-harness/free-models.js"></script>
   <script src="ai-harness/providers/openrouter.js"></script>
   <script src="ai-harness/harness.js"></script>
-  <script src="panel.js"></script>
+  <script type="module" src="panel.js"></script>
 </body>
+
 </html>

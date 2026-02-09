@@ -1,0 +1,27 @@
+# Development tools (exclude from distribution)
+dev/*
+docs/*
+
+# Development artifacts
+*.bak
+*.bak[0-9]
+.DS_Store
+
+# Git files
+.git/*
+.gitignore
+
+# Documentation (internal - keep README.md and USER.md for users)
+refactor.md
+
+# Node modules (if present in dev/build/)
+node_modules/*
+package-lock.json
+
+# Claude development files
+.claude/*
+
+# Distribution output
+*.zip
+.distignore
+package.sh

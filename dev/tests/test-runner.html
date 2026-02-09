@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Test Runner</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .failure {
+            color: red;
+            font-weight: bold;
+        }
+
+        .pending {
+            color: gray;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Module Test Runner</h1>
+    <div id="results">Running tests...</div>
+
+    <!-- Dependencies -->
+    <script src="../../dexie.js"></script>
+
+    <script type="module">
+        const resultsDiv = document.getElementById('results');
+        const ul = document.createElement('ul');
+        resultsDiv.textContent = '';
+        resultsDiv.appendChild(ul);
+
+        let totalTests = 0;
+        let passedTests = 0;
+
+        window.assert = (condition, message) => {
+            totalTests++;
+            const li = document.createElement('li');
+            if (condition) {
+                passedTests++;
+                li.className = 'success';
+                li.textContent = `✅ ${message}`;
+            } else {
+                li.className = 'failure';
+                li.textContent = `❌ ${message}`;
+                console.error(`Test failed: ${message}`);
+            }
+            ul.appendChild(li);
+        };
+
+        window.testSuite = async (name, testFn) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${name}</strong>`;
+            li.style.marginTop = '10px';
+            ul.appendChild(li);
+            try {
+                await testFn();
+            } catch (e) {
+                window.assert(false, `Test suite "${name}" threw error: ${e.message}`);
+                console.error(e);
+            }
+        };
+
+        // Import test modules here with cache busting
+        import('./modules.test.js?t=' + Date.now());
+        import('./state.test.js?t=' + Date.now());
+        import('./ui.test.js?t=' + Date.now());
+
+        // Summary
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const summary = document.createElement('div');
+                summary.style.marginTop = '20px';
+                summary.style.fontWeight = 'bold';
+                summary.textContent = `Ran ${totalTests} tests. Passed: ${passedTests}. Failed: ${totalTests - passedTests}.`;
+                summary.className = passedTests === totalTests ? 'success' : 'failure';
+                document.body.appendChild(summary);
+            }, 500); // Wait for modules to run
+        });
+    </script>
+</body>
+
+</html>

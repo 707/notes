@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
-// node_modules/@orama/orama/dist/browser/components/tokenizer/languages.js
+// ../../../node_modules/@orama/orama/dist/browser/components/tokenizer/languages.js
 var STEMMERS = {
   arabic: "ar",
   armenian: "am",
@@ -72,7 +72,7 @@ function getLocale(language) {
   return language !== void 0 && SUPPORTED_LANGUAGES.includes(language) ? STEMMERS[language] : void 0;
 }
 
-// node_modules/@orama/orama/dist/browser/utils.js
+// ../../../node_modules/@orama/orama/dist/browser/utils.js
 var baseId = Date.now().toString().slice(5);
 var lastId = 0;
 var nano = BigInt(1e3);
@@ -356,7 +356,7 @@ function setDifference(set1, set2) {
   return result;
 }
 
-// node_modules/@orama/orama/dist/browser/errors.js
+// ../../../node_modules/@orama/orama/dist/browser/errors.js
 var allLanguages = SUPPORTED_LANGUAGES.join("\n - ");
 var errors = {
   NO_LANGUAGE_WITH_CUSTOM_TOKENIZER: "Do not pass the language option to create when using a custom tokenizer.",
@@ -419,7 +419,7 @@ function createError(code, ...args) {
   return error;
 }
 
-// node_modules/@orama/orama/dist/browser/components/defaults.js
+// ../../../node_modules/@orama/orama/dist/browser/components/defaults.js
 function formatElapsedTime(n) {
   return {
     raw: Number(n),
@@ -533,7 +533,7 @@ function getVectorSize(type) {
   }
 }
 
-// node_modules/@orama/orama/dist/browser/components/internal-document-id-store.js
+// ../../../node_modules/@orama/orama/dist/browser/components/internal-document-id-store.js
 function createInternalDocumentIDStore() {
   return {
     idToInternalId: /* @__PURE__ */ new Map(),
@@ -581,7 +581,7 @@ function getDocumentIdFromInternalId(store2, internalId) {
   return store2.internalIdToId[internalId - 1];
 }
 
-// node_modules/@orama/orama/dist/browser/components/documents-store.js
+// ../../../node_modules/@orama/orama/dist/browser/components/documents-store.js
 function create(_, sharedInternalDocumentStore) {
   return {
     sharedInternalDocumentStore,
@@ -653,7 +653,7 @@ function createDocumentsStore() {
   };
 }
 
-// node_modules/@orama/orama/dist/browser/components/plugins.js
+// ../../../node_modules/@orama/orama/dist/browser/components/plugins.js
 var AVAILABLE_PLUGIN_HOOKS = [
   "beforeInsert",
   "afterInsert",
@@ -697,7 +697,7 @@ function getAllPluginsByHook(orama, hook) {
   return pluginsToRun;
 }
 
-// node_modules/@orama/orama/dist/browser/components/hooks.js
+// ../../../node_modules/@orama/orama/dist/browser/components/hooks.js
 var OBJECT_COMPONENTS = ["tokenizer", "index", "documentsStore", "sorter", "pinning"];
 var FUNCTION_COMPONENTS = [
   "validateSchema",
@@ -762,7 +762,7 @@ function runAfterCreate(hooks, db) {
   }
 }
 
-// node_modules/@orama/orama/dist/browser/trees/avl.js
+// ../../../node_modules/@orama/orama/dist/browser/trees/avl.js
 var AVLNode = class _AVLNode {
   constructor(key, value) {
     __publicField(this, "k");
@@ -1120,7 +1120,7 @@ var AVLTree = class _AVLTree {
   }
 };
 
-// node_modules/@orama/orama/dist/browser/trees/flat.js
+// ../../../node_modules/@orama/orama/dist/browser/trees/flat.js
 var FlatTree = class _FlatTree {
   constructor() {
     __publicField(this, "numberToDocumentId");
@@ -1248,7 +1248,7 @@ var FlatTree = class _FlatTree {
   }
 };
 
-// node_modules/@orama/orama/dist/browser/components/levenshtein.js
+// ../../../node_modules/@orama/orama/dist/browser/components/levenshtein.js
 function _boundedLevenshtein(term, word, tolerance) {
   if (tolerance < 0)
     return -1;
@@ -1307,7 +1307,7 @@ function syncBoundedLevenshtein(term, w, tolerance) {
   };
 }
 
-// node_modules/@orama/orama/dist/browser/trees/radix.js
+// ../../../node_modules/@orama/orama/dist/browser/trees/radix.js
 var RadixNode = class _RadixNode {
   constructor(key, subWord, end) {
     // Node key
@@ -1639,7 +1639,7 @@ var RadixTree = class _RadixTree extends RadixNode {
   }
 };
 
-// node_modules/@orama/orama/dist/browser/trees/bkd.js
+// ../../../node_modules/@orama/orama/dist/browser/trees/bkd.js
 var K = 2;
 var EARTH_RADIUS = 6371e3;
 var BKDNode = class _BKDNode {
@@ -1961,7 +1961,7 @@ var BKDTree = class _BKDTree {
   }
 };
 
-// node_modules/@orama/orama/dist/browser/trees/bool.js
+// ../../../node_modules/@orama/orama/dist/browser/trees/bool.js
 var BoolNode = class _BoolNode {
   constructor() {
     __publicField(this, "true");
@@ -2000,13 +2000,13 @@ var BoolNode = class _BoolNode {
   }
 };
 
-// node_modules/@orama/orama/dist/browser/components/algorithms.js
+// ../../../node_modules/@orama/orama/dist/browser/components/algorithms.js
 function BM25(tf, matchingCount, docsCount, fieldLength, averageFieldLength, { k, b, d }) {
   const idf = Math.log(1 + (docsCount - matchingCount + 0.5) / (matchingCount + 0.5));
   return idf * (d + tf * (k + 1)) / (tf + k * (1 - b + b * fieldLength / averageFieldLength));
 }
 
-// node_modules/@orama/orama/dist/browser/trees/vector.js
+// ../../../node_modules/@orama/orama/dist/browser/trees/vector.js
 var DEFAULT_SIMILARITY = 0.8;
 var VectorIndex = class _VectorIndex {
   constructor(size) {
@@ -2080,7 +2080,7 @@ function findSimilarVectors(targetVector, keys, vectors, length, threshold) {
   return similarVectors;
 }
 
-// node_modules/@orama/orama/dist/browser/components/index.js
+// ../../../node_modules/@orama/orama/dist/browser/components/index.js
 function insertDocumentScoreParameters(index, prop, id, tokens, docsCount) {
   const internalId = getInternalDocumentId(index.sharedInternalDocumentStore, id);
   index.avgFieldLength[prop] = ((index.avgFieldLength[prop] ?? 0) * (docsCount - 1) + tokens.length) / docsCount;
@@ -2709,7 +2709,7 @@ function addFindResult(set, filteredIDsResults) {
   return set;
 }
 
-// node_modules/@orama/orama/dist/browser/components/sorter.js
+// ../../../node_modules/@orama/orama/dist/browser/components/sorter.js
 function innerCreate(orama, sharedInternalDocumentStore, schema, sortableDeniedProperties, prefix) {
   const sorter = {
     language: orama.tokenizer.language,
@@ -2962,7 +2962,7 @@ function createSorter() {
   };
 }
 
-// node_modules/@orama/orama/dist/browser/components/tokenizer/diacritics.js
+// ../../../node_modules/@orama/orama/dist/browser/components/tokenizer/diacritics.js
 var DIACRITICS_CHARCODE_START = 192;
 var DIACRITICS_CHARCODE_END = 383;
 var CHARCODE_REPLACE_MAPPING = [
@@ -3172,7 +3172,7 @@ function replaceDiacritics(str) {
   return String.fromCharCode(...stringCharCode);
 }
 
-// node_modules/@orama/orama/dist/browser/components/tokenizer/english-stemmer.js
+// ../../../node_modules/@orama/orama/dist/browser/components/tokenizer/english-stemmer.js
 var step2List = {
   ational: "ate",
   tional: "tion",
@@ -3331,7 +3331,7 @@ function stemmer(w) {
   return w;
 }
 
-// node_modules/@orama/orama/dist/browser/components/tokenizer/index.js
+// ../../../node_modules/@orama/orama/dist/browser/components/tokenizer/index.js
 function normalizeToken(prop, token, withCache = true) {
   const key = `${this.language}:${prop}:${token}`;
   if (withCache && this.normalizationCache.has(key)) {
@@ -3438,7 +3438,7 @@ function createTokenizer(config = {}) {
   return tokenizer;
 }
 
-// node_modules/@orama/orama/dist/browser/components/pinning.js
+// ../../../node_modules/@orama/orama/dist/browser/components/pinning.js
 function create4(sharedInternalDocumentStore) {
   return {
     sharedInternalDocumentStore,
@@ -3524,7 +3524,7 @@ function createPinning() {
   };
 }
 
-// node_modules/@orama/orama/dist/browser/methods/create.js
+// ../../../node_modules/@orama/orama/dist/browser/methods/create.js
 function validateComponents(components) {
   const defaultComponents = {
     formatElapsedTime,
@@ -3653,12 +3653,12 @@ function getVersion() {
   return "{{VERSION}}";
 }
 
-// node_modules/@orama/orama/dist/browser/methods/docs.js
+// ../../../node_modules/@orama/orama/dist/browser/methods/docs.js
 function count2(db) {
   return db.documentsStore.count(db.data.docs);
 }
 
-// node_modules/@orama/orama/dist/browser/methods/insert.js
+// ../../../node_modules/@orama/orama/dist/browser/methods/insert.js
 function insert3(orama, doc, language, skipHooks, options) {
   const errorProperty = orama.validateSchema(doc, orama.schema);
   if (errorProperty) {
@@ -3789,12 +3789,12 @@ function indexAndSortDocumentSync(orama, id, indexableProperties, indexableValue
   }
 }
 
-// node_modules/@orama/orama/dist/browser/constants.js
+// ../../../node_modules/@orama/orama/dist/browser/constants.js
 var MODE_FULLTEXT_SEARCH = "fulltext";
 var MODE_HYBRID_SEARCH = "hybrid";
 var MODE_VECTOR_SEARCH = "vector";
 
-// node_modules/@orama/orama/dist/browser/components/facets.js
+// ../../../node_modules/@orama/orama/dist/browser/components/facets.js
 function sortAsc(a, b) {
   return a[1] - b[1];
 }
@@ -3912,7 +3912,7 @@ function calculateBooleanStringOrEnumFacetBuilder(values, propertyType, alreadyI
   };
 }
 
-// node_modules/@orama/orama/dist/browser/components/groups.js
+// ../../../node_modules/@orama/orama/dist/browser/components/groups.js
 var DEFAULT_REDUCE = {
   reducer: (_, acc, res, index) => {
     acc[index] = res;
@@ -4030,7 +4030,7 @@ function calculateCombination(arrs, index = 0) {
   return combinations;
 }
 
-// node_modules/@orama/orama/dist/browser/components/pinning-manager.js
+// ../../../node_modules/@orama/orama/dist/browser/components/pinning-manager.js
 function applyPinningRules(orama, pinningStore, uniqueDocsArray, searchTerm) {
   const matchingRules = getMatchingRules(pinningStore, searchTerm);
   if (matchingRules.length === 0) {
@@ -4110,7 +4110,7 @@ function applyPinningRules(orama, pinningStore, uniqueDocsArray, searchTerm) {
   return finalResults;
 }
 
-// node_modules/@orama/orama/dist/browser/methods/search-fulltext.js
+// ../../../node_modules/@orama/orama/dist/browser/methods/search-fulltext.js
 function innerFullTextSearch(orama, params, language) {
   const { term, properties } = params;
   const index = orama.data.index;
@@ -4274,7 +4274,7 @@ function applyDefault(bm25Relevance) {
   return r;
 }
 
-// node_modules/@orama/orama/dist/browser/methods/search-vector.js
+// ../../../node_modules/@orama/orama/dist/browser/methods/search-vector.js
 function innerVectorSearch(orama, params, language) {
   const vector = params.vector;
   if (vector && (!("value" in vector) || !("property" in vector))) {
@@ -4367,7 +4367,7 @@ function searchVector(orama, params, language = "english") {
   return performSearchLogic();
 }
 
-// node_modules/@orama/orama/dist/browser/methods/search-hybrid.js
+// ../../../node_modules/@orama/orama/dist/browser/methods/search-hybrid.js
 function innerHybridSearch(orama, params, language) {
   const fullTextIDs = minMaxScoreNormalization(innerFullTextSearch(orama, params, language));
   const vectorIDs = innerVectorSearch(orama, params, language);
@@ -4468,7 +4468,7 @@ function getQueryWeights(query) {
   };
 }
 
-// node_modules/@orama/orama/dist/browser/methods/search.js
+// ../../../node_modules/@orama/orama/dist/browser/methods/search.js
 function search2(orama, params, language) {
   const mode = params.mode ?? MODE_FULLTEXT_SEARCH;
   if (mode === MODE_FULLTEXT_SEARCH) {
@@ -4537,7 +4537,7 @@ function fetchDocuments(orama, uniqueDocsArray, offset, limit) {
   return results;
 }
 
-// node_modules/@orama/orama/dist/browser/methods/serialization.js
+// ../../../node_modules/@orama/orama/dist/browser/methods/serialization.js
 function load6(orama, raw) {
   orama.internalDocumentIDStore.load(orama, raw.internalDocumentIDStore);
   orama.data.index = orama.index.load(orama.internalDocumentIDStore, raw.index);
@@ -4557,7 +4557,7 @@ function save6(orama) {
   };
 }
 
-// node_modules/@orama/orama/dist/browser/types.js
+// ../../../node_modules/@orama/orama/dist/browser/types.js
 var kInsertions = Symbol("orama.insertions");
 var kRemovals = Symbol("orama.removals");
 export {
