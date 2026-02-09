@@ -42,6 +42,7 @@ zip -r "$OUTPUT_FILE" . \
   -x "docs/*" \
   -x ".claude/*" \
   -x ".git/*" \
+  -x ".git-original-backup/*" \
   -x ".gitignore" \
   -x "*.bak*" \
   -x ".DS_Store" \
