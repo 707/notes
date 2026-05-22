@@ -1,5 +1,5 @@
 /**
- * IndexedDB Verification Script for Klue [NOT-7]
+ * IndexedDB Verification Script for Gloss [NOT-7]
  *
  * PURPOSE: Validates that IndexedDB is correctly configured and operational.
  * This standalone script can be pasted into Chrome DevTools console to verify:

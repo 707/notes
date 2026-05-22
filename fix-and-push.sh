@@ -10,8 +10,8 @@ echo "==================================="
 echo ""
 
 # Remove the zip file from git (keep local copy)
-echo "1. Removing klue-chrome-extension-v1.0.0.zip from git..."
-git rm --cached klue-chrome-extension-v1.0.0.zip
+echo "1. Removing gloss-chrome-extension-v1.0.0.zip from git..."
+git rm --cached gloss-chrome-extension-v1.0.0.zip
 echo ""
 
 # Add to gitignore
@@ -25,7 +25,7 @@ echo ""
 echo "3. Committing changes..."
 git commit -m "Remove large zip file from git tracking
 
-- Remove klue-chrome-extension-v1.0.0.zip (11MB)
+- Remove gloss-chrome-extension-v1.0.0.zip (11MB)
 - Add *.zip to .gitignore
 - Distribution files should not be in git history
 

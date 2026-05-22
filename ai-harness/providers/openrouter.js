@@ -54,7 +54,7 @@ class OpenRouterProvider {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': chrome.runtime.getURL(''),
-          'X-Title': 'Klue'
+          'X-Title': 'Gloss'
         },
         body: JSON.stringify({
           model: modelId,
@@ -152,7 +152,7 @@ class OpenRouterProvider {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': chrome.runtime.getURL(''),
-          'X-Title': 'Klue'
+          'X-Title': 'Gloss'
         },
         body: JSON.stringify({
           model: 'openrouter/auto',

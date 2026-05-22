@@ -1,4 +1,4 @@
-// [NOT-57] Shared utility functions for Klue
+// [NOT-57] Shared utility functions for Gloss
 // Used by both background.js and panel.js
 
 /**

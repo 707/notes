@@ -2,7 +2,7 @@
 ## Linear.app-Inspired Design System
 
 ### Overview
-Successfully implemented a comprehensive UI overhaul for the Klue extension, drawing inspiration from Linear.app's clean, structured design aesthetic.
+Successfully implemented a comprehensive UI overhaul for the Gloss extension, drawing inspiration from Linear.app's clean, structured design aesthetic.
 
 ## Changes Implemented
 

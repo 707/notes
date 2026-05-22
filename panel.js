@@ -1,4 +1,4 @@
-// Klue - Side Panel Logic
+// Gloss - Side Panel Logic
 
 /**
  * PANEL.JS - Main Orchestrator

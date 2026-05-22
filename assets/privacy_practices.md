@@ -1,7 +1,7 @@
 # Chrome Web Store Privacy Practices & Permissions Justifications
 
 ## Single Purpose Description
-Klue is a side-panel note-taking assistant that allows users to capture, organize, and semantically search for text and insights from any webpage they visit, acting as a "second brain" for their browsing experience.
+Gloss is a side-panel note-taking assistant that allows users to capture, organize, and semantically search for text and insights from any webpage they visit, acting as a "second brain" for their browsing experience.
 
 ## Permission Justifications
 
@@ -11,11 +11,11 @@ ActiveTab is used to simplify the user experience. It allows the extension to mo
 
 ### ContextMenus
 **Justification:**
-This permission is required to add a "Capture selection to Klue" item to the browser's right-click context menu. This provides users with a quick and seamless way to save specific text snippets from a webpage directly into their side panel notebook without breaking their workflow.
+This permission is required to add a "Capture selection to Gloss" item to the browser's right-click context menu. This provides users with a quick and seamless way to save specific text snippets from a webpage directly into their side panel notebook without breaking their workflow.
 
 ### Host Permissions (`<all_urls>`)
 **Justification:**
-Klue is designed to work as a ubiquitous research companion across the entire web. The extension needs to be able to extract page content (text) to generate vector embeddings for semantic search and to allow users to capture notes from any site they visit. Restricting this to specific domains would fundamentally break the "capture anywhere" core functionality of the product.
+Gloss is designed to work as a ubiquitous research companion across the entire web. The extension needs to be able to extract page content (text) to generate vector embeddings for semantic search and to allow users to capture notes from any site they visit. Restricting this to specific domains would fundamentally break the "capture anywhere" core functionality of the product.
 
 ### Remote Code
 **Answer:** No, I am not using Remote code.
@@ -33,7 +33,7 @@ The Side Panel is the primary user interface of the application. It provides a p
 
 ### Storage
 **Justification:**
-Storage is "critical" to Klue's privacy-first architecture. All user data—including notes, tags, settings, and the vector database indices—is stored locally on the user's device using `chrome.storage.local` and IndexedDB. This ensures that user data remains private and is not synced to any external cloud servers by default.
+Storage is "critical" to Gloss's privacy-first architecture. All user data—including notes, tags, settings, and the vector database indices—is stored locally on the user's device using `chrome.storage.local` and IndexedDB. This ensures that user data remains private and is not synced to any external cloud servers by default.
 
 ## Data Privacy & Safety ("User Data")
 
@@ -47,7 +47,7 @@ Select the following categories:
 *   [x] **Personal communications**
     *   *Justification:* "To store the local history of conversations. Note: Messages are sent to the user's configured AI provider (e.g., OpenRouter) for processing only when the user engages with the chat."
 
-*(Note: "Personally identifiable information", "Health", "Financial", "Authentication", "Location", and "User activity" should generally be left unchecked as Klue is local-first.)*
+*(Note: "Personally identifiable information", "Health", "Financial", "Authentication", "Location", and "User activity" should generally be left unchecked as Gloss is local-first.)*
 
 ### 2. Certifications
 You must certify (check) all three statements:
@@ -57,5 +57,5 @@ You must certify (check) all three statements:
 
 ### 3. Privacy Policy URL
 Use the raw GitHub link to the `PRIVACY.md` file (once pushed):
-`https://github.com/707/klue/blob/main/PRIVACY.md`
+`https://github.com/707/gloss/blob/main/PRIVACY.md`
 

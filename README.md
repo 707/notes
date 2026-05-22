@@ -1,12 +1,12 @@
-# Klue - Intelligent Chrome Knowledge Clipper
+# Gloss - Intelligent Chrome Knowledge Clipper
 
-![klue](https://github.com/user-attachments/assets/42265fc6-0d15-4d8d-9db7-656d609b97a3)
+![gloss](https://github.com/user-attachments/assets/42265fc6-0d15-4d8d-9db7-656d609b97a3)
 
-Klue is a high-performance Chrome extension designed for researchers and power users. It goes beyond simple text clipping by providing a local-first, AI-powered knowledge base with semantic search and contextual recall.
+Gloss is a high-performance Chrome extension designed for researchers and power users. It goes beyond simple text clipping by providing a local-first, AI-powered knowledge base with semantic search and contextual recall.
 
 ## What Is This?
 
-**Klue** is an AI-powered Chrome extension designed to shift knowledge capture from passive storage to active synthesis. It provides a non-intrusive side panel for capturing text, images, and context from the web, acting as a "Private, Proactive Intelligence" layer that turns your bookmarks into a living knowledge base.
+**Gloss** is an AI-powered Chrome extension designed to shift knowledge capture from passive storage to active synthesis. It provides a non-intrusive side panel for capturing text, images, and context from the web, acting as a "Private, Proactive Intelligence" layer that turns your bookmarks into a living knowledge base.
 
 ## 🌟 Key Features
 
@@ -26,7 +26,7 @@ Klue is a high-performance Chrome extension designed for researchers and power u
 
 ## 🏗️ Technical Architecture
 
-Klue is built as a modern Manifest V3 extension with a focus on performance and reliability.
+Gloss is built as a modern Manifest V3 extension with a focus on performance and reliability.
 
 ### Core Stack
 - **Database**: [Dexie.js](https://dexie.org/) (IndexedDB) for robust, high-capacity local storage.
@@ -71,7 +71,7 @@ npm run build
 ./package.sh
 ```
 
-This creates `klue-chrome-extension-vX.X.X.zip` ready for distribution.
+This creates `gloss-chrome-extension-vX.X.X.zip` ready for distribution.
 
 ## 🚀 Getting Started (Development)
 

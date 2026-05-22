@@ -1,4 +1,4 @@
-// Klue - Capture Module
+// Gloss - Capture Module
 // Handles note creation, image uploads, and web capture functionality
 
 import { getState, setState, setMode } from './state.js';
@@ -327,7 +327,7 @@ export async function handleSaveClip(clipData = {}) {
             url: clipData.url || '',
             metadata: clipData.metadata || {
                 title: 'Manual Note',
-                siteName: 'Klue',
+                siteName: 'Gloss',
                 favicon: 'icons/icon32.png'
             },
             // [NOT-59] Extract flexible_metadata from clipData.metadata if present

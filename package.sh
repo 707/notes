@@ -5,11 +5,11 @@
 set -e  # Exit on error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DIST_NAME="klue-chrome-extension"
+DIST_NAME="gloss-chrome-extension"
 DIST_VERSION=$(grep '"version"' manifest.json | sed 's/.*"version": "\(.*\)".*/\1/')
 OUTPUT_FILE="${DIST_NAME}-v${DIST_VERSION}.zip"
 
-echo "📦 Klue Chrome Extension Packager"
+echo "📦 Gloss Chrome Extension Packager"
 echo "=================================="
 echo "Version: ${DIST_VERSION}"
 echo "Output: ${OUTPUT_FILE}"
@@ -40,16 +40,29 @@ cd "$SCRIPT_DIR"
 zip -r "$OUTPUT_FILE" . \
   -x "dev/*" \
   -x "docs/*" \
+  -x "landing/*" \
+  -x "landing2/*" \
+  -x "landing3/*" \
+  -x "releases/*" \
+  -x "scripts/*" \
   -x ".claude/*" \
   -x ".git/*" \
   -x ".git-original-backup/*" \
+  -x ".gemini/*" \
   -x ".gitignore" \
   -x "*.bak*" \
-  -x ".DS_Store" \
+  -x "*.DS_Store" \
   -x "*.zip" \
   -x ".distignore" \
   -x "package.sh" \
+  -x "fix-and-push.sh" \
+  -x "push-to-github.sh" \
+  -x "simple-push-fix.sh" \
+  -x "logo-generator.html" \
+  -x "RESTRUCTURE_HISTORY.md" \
+  -x "USER.MD" \
   -x "node_modules/*" \
+  -x "*/node_modules/*" \
   -x "package-lock.json"
 
 # Get file size

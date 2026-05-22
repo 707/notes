@@ -1,4 +1,4 @@
-// Klue - AI Chat Module
+// Gloss - AI Chat Module
 // Handles AI chat interface, message rendering, and context-aware conversations
 
 import { getState, setState, setMode } from './state.js';

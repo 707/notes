@@ -1,14 +1,14 @@
-# Privacy Policy for Klue
+# Privacy Policy for Gloss
 
 **Last Updated:** February 9, 2026
 
 ## Introduction
-Klue ("we", "our", or "us") is dedicated to protecting your privacy. This Privacy Policy explains how our Chrome Extension ("Klue") handles your data.
+Gloss ("we", "our", or "us") is dedicated to protecting your privacy. This Privacy Policy explains how our Chrome Extension ("Gloss") handles your data.
 
 ## Introduction
-Klue ("we", "our", or "us") is dedicated to protecting your privacy. This Privacy Policy explains how our Chrome Extension ("Klue") handles your data.
+Gloss ("we", "our", or "us") is dedicated to protecting your privacy. This Privacy Policy explains how our Chrome Extension ("Gloss") handles your data.
 
-**Core Principle:** Klue prioritizes **local storage**. Your notes and vector index live on your device. However, **AI chat features rely on third-party AI providers** (like OpenRouter) to process your messages.
+**Core Principle:** Gloss prioritizes **local storage**. Your notes and vector index live on your device. However, **AI chat features rely on third-party AI providers** (like OpenRouter) to process your messages.
 
 ## Data Collection and Usage
 
@@ -33,7 +33,7 @@ Klue ("we", "our", or "us") is dedicated to protecting your privacy. This Privac
 ## Third-Party Services
 
 ### OpenRouter (AI Provider)
-Klue connects to OpenRouter to power the AI assistant.
+Gloss connects to OpenRouter to power the AI assistant.
 *   **Data Transmission:** When you send a message, specific data (your query + relevant note context) is transmitted to OpenRouter's API for processing.
 *   **Your Control:** You provide your own API key. No data is sent unless you actively use the chat feature.
 *   **Privacy:** Please refer to [OpenRouter's Privacy Policy](https://openrouter.ai/privacy) to understand how they handle data processed through their API.

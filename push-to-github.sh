@@ -29,7 +29,7 @@ if git remote | grep -q "^origin$"; then
     echo "Remote 'origin' already exists"
 else
     echo "4. Adding remote origin..."
-    git remote add origin https://github.com/707/klue.git
+    git remote add origin https://github.com/707/gloss.git
     echo "Remote added successfully"
 fi
 echo ""
@@ -57,7 +57,7 @@ if [ "$CONFIRM" = "yes" ]; then
     echo "==================================="
     echo ""
     echo "Next steps:"
-    echo "1. Visit https://github.com/707/klue"
+    echo "1. Visit https://github.com/707/gloss"
     echo "2. Verify files are at root (no chrome-clipper/ directory)"
     echo "3. Check commit count is ~103"
     echo "4. Verify extension files visible (manifest.json, panel.js, etc.)"

@@ -86,7 +86,7 @@ This bundles:
 ./package.sh
 ```
 
-This creates `klue-chrome-extension-v1.0.0.zip` in the chrome-clipper root.
+This creates `gloss-chrome-extension-v1.0.0.zip` in the chrome-clipper root.
 
 **What's excluded:**
 - Defined in `.distignore`

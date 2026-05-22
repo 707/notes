@@ -3,7 +3,7 @@
 
 ## 1. The Pivot: From "Storage" to "Synthesis"
 
-The current *Klue* is a high-fidelity **storage bucket**. It relies 100% on user effort to organize, tag, and annotate. In 2026, this is insufficient. A user surfing the web is in a "high-velocity" flow state; asking them to stop and manually tag content breaks that flow.
+The current *Gloss* is a high-fidelity **storage bucket**. It relies 100% on user effort to organize, tag, and annotate. In 2026, this is insufficient. A user surfing the web is in a "high-velocity" flow state; asking them to stop and manually tag content breaks that flow.
 
 **The New Core Loop:**
 *   **Old:** Highlight -> Capture -> Manual Note -> Manual Tag -> Save.

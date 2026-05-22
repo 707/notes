@@ -47,7 +47,7 @@ Keep `chrome://extensions` open in a pinned tab. When files change, you'll see a
 
 **Background Service Worker Console:**
 - Go to `chrome://extensions`
-- Click "service worker" under Klue
+- Click "service worker" under Gloss
 
 **Side Panel Console:**
 - Open side panel

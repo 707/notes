@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Klue",
-  "version": "1.0.0",
+  "name": "Gloss",
+  "version": "2.0.0",
   "description": "Capture text from web pages with notes and tags using a side panel",
   "permissions": [
     "sidePanel",
@@ -25,7 +25,7 @@
     "default_path": "panel.html"
   },
   "action": {
-    "default_title": "Open Klue",
+    "default_title": "Open Gloss",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

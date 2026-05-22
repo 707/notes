@@ -1,9 +1,9 @@
 {
-  "name": "klue-chrome-clipper-build",
+  "name": "gloss-chrome-clipper-build",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Build system for Klue Chrome Extension ML libraries",
+  "description": "Build system for Gloss Chrome Extension ML libraries",
   "scripts": {
     "build": "node build.js"
   },

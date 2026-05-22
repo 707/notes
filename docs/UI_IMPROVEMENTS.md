@@ -7,13 +7,13 @@
 **New Header Structure:**
 ```
 ┌──────────────────────────────────────┐
-│ [📘] Klue          [←]  │ ← Always visible
+│ [📘] Gloss          [←]  │ ← Always visible
 ├──────────────────────────────────────┤
 ```
 
 **Features:**
 - Logo displays extension icon (32px)
-- Title "Klue" beside logo
+- Title "Gloss" beside logo
 - Back button only visible in Capture mode
 - Back button navigates from Capture to Library without closing panel
 - Sticky positioning at top of panel
@@ -127,7 +127,7 @@ let filterState = {
 
 **To Test:**
 1. Go to `chrome://extensions`
-2. Click reload icon for Klue
+2. Click reload icon for Gloss
 3. Test all the new features above
 
 **Known Issues:**

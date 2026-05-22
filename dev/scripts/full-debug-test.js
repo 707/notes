@@ -42,5 +42,5 @@ console.log('5️⃣  Current mode:', window.currentMode || 'unknown');
 
 console.log('\n📝 Instructions:');
 console.log('   1. If you see "Capture mode visible: false" - click extension icon to open capture');
-console.log('   2. If metadata shows "Klue" - you may be in manual note mode');
+console.log('   2. If metadata shows "Gloss" - you may be in manual note mode');
 console.log('   3. Try: Select text on THIS page → right-click → "Capture Text"');

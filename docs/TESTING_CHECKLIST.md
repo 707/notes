@@ -109,7 +109,7 @@
 
 **How to Run:**
 1. Open Chrome Extensions page (`chrome://extensions`)
-2. Find "Klue" and click "Inspect views: service worker" or open the extension's side panel
+2. Find "Gloss" and click "Inspect views: service worker" or open the extension's side panel
 3. Open the **Console** tab in DevTools
 4. Open `chrome-clipper/verify-db.js` in a text editor
 5. Copy the entire contents of the file

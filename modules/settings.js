@@ -1,4 +1,4 @@
-// Klue - Settings Module
+// Gloss - Settings Module
 // Handles settings UI, API key management, and model selection
 
 import { setMode } from './state.js';

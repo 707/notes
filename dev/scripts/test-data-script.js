@@ -3,7 +3,7 @@
  * Run this in the browser console while the side panel is open
  * to create test notes for vector search testing
  *
- * IMPORTANT: Open the Klue side panel FIRST before running this script!
+ * IMPORTANT: Open the Gloss side panel FIRST before running this script!
  */
 
 async function generateTestNotesForVectorSearch() {
@@ -11,12 +11,12 @@ async function generateTestNotesForVectorSearch() {
   if (typeof window.database === 'undefined') {
     console.error('❌ ERROR: window.database is not available!');
     console.log('📝 Please make sure:');
-    console.log('   1. The Klue side panel is OPEN');
+    console.log('   1. The Gloss side panel is OPEN');
     console.log('   2. You are running this in the side panel console (not the main page console)');
     console.log('   3. Wait a few seconds for the panel to fully load');
     console.log('\n💡 To open the side panel:');
-    console.log('   - Click the Klue extension icon, OR');
-    console.log('   - Right-click on any page → "Save to Klue"');
+    console.log('   - Click the Gloss extension icon, OR');
+    console.log('   - Right-click on any page → "Save to Gloss"');
     return;
   }
 

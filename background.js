@@ -1,11 +1,11 @@
-// Background Service Worker for Klue
+// Background Service Worker for Gloss
 // Handles context menu, text capture, and side panel orchestration
 
 // [NOT-38] Import VectorService for semantic search
 import { vectorService } from './vector-service.js';
 import { extractPageMetadata } from './modules/utils.js';
 
-console.log('🚀 Klue background service worker started');
+console.log('🚀 Gloss background service worker started');
 
 // [NOT-38] Initialize VectorService on startup
 console.log('🧠 [NOT-38] Initializing VectorService...');
